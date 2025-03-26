@@ -1,6 +1,7 @@
 const express = require('express');
 const { getNonce } = require('../services/blockchain');
 const { pgPool } = require('../config/database');
+const { authMiddleware } = require('../middleware/auth');
 
 const setupRoutes = (app) => {
   const router = express.Router();
@@ -15,8 +16,13 @@ const setupRoutes = (app) => {
     }
   });
 
-  // Get user profile
-  router.get('/user/:address', async (req, res) => {
+  // Public routes
+  router.get('/health', (req, res) => {
+    res.json({ status: 'ok' });
+  });
+
+  // Protected routes
+  router.get('/user/:address', authMiddleware, async (req, res) => {
     try {
       const { address } = req.params;
       const result = await pgPool.query(
@@ -34,9 +40,23 @@ const setupRoutes = (app) => {
     }
   });
 
-  // Health check endpoint
-  router.get('/health', (req, res) => {
-    res.json({ status: 'ok' });
+  // Game-related routes (protected)
+  router.post('/game/create', authMiddleware, async (req, res) => {
+    try {
+      // Game creation logic
+      res.json({ message: 'Game created successfully' });
+    } catch (error) {
+      res.status(500).json({ error: 'Failed to create game' });
+    }
+  });
+
+  router.post('/game/join/:gameId', authMiddleware, async (req, res) => {
+    try {
+      // Game joining logic
+      res.json({ message: 'Joined game successfully' });
+    } catch (error) {
+      res.status(500).json({ error: 'Failed to join game' });
+    }
   });
 
   app.use('/api', router);

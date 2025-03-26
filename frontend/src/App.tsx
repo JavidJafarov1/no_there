@@ -5,6 +5,7 @@ import Layout from './components/Layout';
 import Home from './pages/Home';
 import Game from './pages/Game';
 import Profile from './pages/Profile';
+import ProtectedRoute from './components/ProtectedRoute';
 
 function App() {
   return (
@@ -12,7 +13,7 @@ function App() {
       <PrivyProvider
         appId={import.meta.env.VITE_PRIVY_APP_ID}
         config={{
-          loginMethods: ['email', 'wallet'],
+          loginMethods: ['email', 'wallet', 'google', 'twitter'],
           appearance: {
             theme: 'dark',
             accentColor: '#676FFF',
@@ -24,8 +25,22 @@ function App() {
           <Layout>
             <Routes>
               <Route path="/" element={<Home />} />
-              <Route path="/game" element={<Game />} />
-              <Route path="/profile" element={<Profile />} />
+              <Route
+                path="/game"
+                element={
+                  <ProtectedRoute>
+                    <Game />
+                  </ProtectedRoute>
+                }
+              />
+              <Route
+                path="/profile"
+                element={
+                  <ProtectedRoute>
+                    <Profile />
+                  </ProtectedRoute>
+                }
+              />
             </Routes>
           </Layout>
         </Router>

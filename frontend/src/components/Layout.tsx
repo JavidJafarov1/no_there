@@ -1,18 +1,29 @@
-import { Box, Flex, Button, useColorModeValue } from '@chakra-ui/react';
-import { Link as RouterLink, useLocation } from 'react-router-dom';
+import { Box, Flex, Button, useColorModeValue, Container } from '@chakra-ui/react';
+import { Link as RouterLink, useLocation, useNavigate } from 'react-router-dom';
 import { usePrivy } from '@privy-io/react-auth';
+import { useEffect } from 'react';
 
 interface LayoutProps {
   children: React.ReactNode;
 }
 
-const Layout: React.FC<LayoutProps> = ({ children }) => {
+const Layout = ({ children }: LayoutProps) => {
   const location = useLocation();
-  const { login, logout, authenticated, user } = usePrivy();
+  const navigate = useNavigate();
+  const { login, logout, authenticated, ready } = usePrivy();
   const bgColor = useColorModeValue('white', 'gray.800');
   const borderColor = useColorModeValue('gray.200', 'gray.700');
 
   const isActive = (path: string) => location.pathname === path;
+
+  useEffect(() => {
+    if (ready && authenticated) {
+      // If user is on the home page after login, redirect to game
+      if (location.pathname === '/') {
+        navigate('/game');
+      }
+    }
+  }, [ready, authenticated, location.pathname, navigate]);
 
   return (
     <Box minH="100vh" bg={bgColor}>
@@ -78,9 +89,9 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
         </Flex>
       </Flex>
 
-      <Box as="main" p={4}>
+      <Container maxW="container.xl" py={8}>
         {children}
-      </Box>
+      </Container>
     </Box>
   );
 };
