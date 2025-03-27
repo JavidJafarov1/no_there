@@ -1,32 +1,56 @@
-const jwt = require('jsonwebtoken');
-const jwksClient = require('jwks-rsa');
+const admin = require('firebase-admin');
+const { verifyWalletSignature } = require('../services/blockchain');
 
-const client = jwksClient({
-  jwksUri: 'https://auth.privy.io/api/v1/apps/cm8pvsjsw01vszityct40r9w3/jwks.json'
-});
-
-const verifyToken = async (token) => {
+// Initialize Firebase Admin if not already initialized
+if (!admin.apps.length) {
   try {
-    const decodedToken = jwt.decode(token, { complete: true });
-    if (!decodedToken) {
-      throw new Error('Invalid token');
-    }
-
-    const key = await client.getSigningKey(decodedToken.header.kid);
-    const signingKey = key.getPublicKey();
-
-    const verified = jwt.verify(token, signingKey, {
-      issuer: 'https://auth.privy.io',
-      audience: 'cm8pvsjsw01vszityct40r9w3'
+    admin.initializeApp({
+      credential: admin.credential.cert({
+        projectId: process.env.FIREBASE_PROJECT_ID,
+        clientEmail: process.env.FIREBASE_CLIENT_EMAIL,
+        privateKey: process.env.FIREBASE_PRIVATE_KEY?.replace(/\\n/g, '\n')
+      })
     });
-
-    return verified;
+    console.log('Firebase Admin initialized successfully');
   } catch (error) {
-    console.error('Token verification failed:', error);
+    console.error('Firebase Admin initialization error:', error);
+  }
+}
+
+/**
+ * Verify a Firebase ID token
+ * @param {string} token - The Firebase ID token to verify
+ * @returns {Promise<object|null>} - The decoded token or null if invalid
+ */
+const verifyFirebaseToken = async (token) => {
+  try {
+    const decodedToken = await admin.auth().verifyIdToken(token);
+    return decodedToken;
+  } catch (error) {
+    console.error('Firebase token verification failed:', error);
     return null;
   }
 };
 
+/**
+ * Verify a wallet signature
+ * @param {string} signature - The signature to verify
+ * @param {string} message - The original message that was signed
+ * @param {string} address - The wallet address that should have signed the message
+ * @returns {Promise<boolean>} - Whether the signature is valid
+ */
+const verifyWalletAuth = async (signature, message, address) => {
+  try {
+    return await verifyWalletSignature(signature, message, address);
+  } catch (error) {
+    console.error('Wallet signature verification failed:', error);
+    return false;
+  }
+};
+
+/**
+ * Middleware to authenticate requests using Firebase token or wallet signature
+ */
 const authMiddleware = async (req, res, next) => {
   try {
     const authHeader = req.headers.authorization;
@@ -35,14 +59,14 @@ const authMiddleware = async (req, res, next) => {
     }
 
     const token = authHeader.split(' ')[1];
-    const verifiedToken = await verifyToken(token);
+    const decodedToken = await verifyFirebaseToken(token);
 
-    if (!verifiedToken) {
+    if (!decodedToken) {
       return res.status(401).json({ error: 'Invalid token' });
     }
 
     // Add user info to request
-    req.user = verifiedToken;
+    req.user = decodedToken;
     next();
   } catch (error) {
     console.error('Auth middleware error:', error);
@@ -50,7 +74,36 @@ const authMiddleware = async (req, res, next) => {
   }
 };
 
+/**
+ * Middleware to authenticate requests using wallet signature
+ * Expects signature, message, and address in the request body
+ */
+const walletAuthMiddleware = async (req, res, next) => {
+  try {
+    const { signature, message, address } = req.body;
+    
+    if (!signature || !message || !address) {
+      return res.status(400).json({ error: 'Missing signature parameters' });
+    }
+
+    const isValid = await verifyWalletAuth(signature, message, address);
+    
+    if (!isValid) {
+      return res.status(401).json({ error: 'Invalid wallet signature' });
+    }
+
+    // Add user info to request
+    req.user = { address };
+    next();
+  } catch (error) {
+    console.error('Wallet auth middleware error:', error);
+    res.status(401).json({ error: 'Authentication failed' });
+  }
+};
+
 module.exports = {
   authMiddleware,
-  verifyToken
+  walletAuthMiddleware,
+  verifyFirebaseToken,
+  verifyWalletAuth
 }; 
