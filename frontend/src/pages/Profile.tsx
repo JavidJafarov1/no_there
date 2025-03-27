@@ -7,18 +7,28 @@ import {
   Badge,
   Divider,
   useColorModeValue,
+  Spinner,
 } from '@chakra-ui/react';
-import { usePrivy } from '@privy-io/react-auth';
+import { useAuth } from '../contexts/AuthContext';
 
 const Profile = () => {
-  const { user } = usePrivy();
+  const { user, walletAddress, isLoading } = useAuth();
   const bgColor = useColorModeValue('white', 'gray.800');
   const borderColor = useColorModeValue('gray.200', 'gray.700');
 
-  if (!user) {
+  if (isLoading) {
+    return (
+      <Box textAlign="center" p={10}>
+        <Spinner size="xl" />
+      </Box>
+    );
+  }
+
+  // This shouldn't happen with ProtectedRoute, but just in case
+  if (!user && !walletAddress) {
     return (
       <Box p={4}>
-        <Text>Please connect your wallet to view your profile</Text>
+        <Text>Please connect your wallet or sign in to view your profile</Text>
       </Box>
     );
   }
@@ -38,13 +48,13 @@ const Profile = () => {
         <Box textAlign="center">
           <Avatar
             size="2xl"
-            name={user.email?.address || user.wallet?.address}
+            name={user?.email || walletAddress || 'User'}
           />
           <Heading size="lg" mt={4}>
-            {user.email?.address || user.wallet?.address}
+            {user?.displayName || (walletAddress ? `${walletAddress.slice(0, 6)}...${walletAddress.slice(-4)}` : 'User')}
           </Heading>
           <Badge colorScheme="blue" mt={2}>
-            {user.wallet?.address ? 'Wallet Connected' : 'Email Connected'}
+            {walletAddress ? 'Wallet Connected' : 'Social Login'}
           </Badge>
         </Box>
 
@@ -55,22 +65,30 @@ const Profile = () => {
             Account Details
           </Heading>
           <VStack align="start" spacing={2}>
-            {user.email?.address && (
+            {user?.email && (
               <Box>
                 <Text fontWeight="bold">Email:</Text>
-                <Text>{user.email.address}</Text>
+                <Text>{user.email}</Text>
               </Box>
             )}
-            {user.wallet?.address && (
+            {walletAddress && (
               <Box>
                 <Text fontWeight="bold">Wallet Address:</Text>
-                <Text fontFamily="monospace">{user.wallet.address}</Text>
+                <Text fontFamily="monospace">{walletAddress}</Text>
               </Box>
             )}
-            <Box>
-              <Text fontWeight="bold">Account ID:</Text>
-              <Text>{user.id}</Text>
-            </Box>
+            {user?.uid && (
+              <Box>
+                <Text fontWeight="bold">User ID:</Text>
+                <Text>{user.uid}</Text>
+              </Box>
+            )}
+            {user?.providerData?.[0]?.providerId && (
+              <Box>
+                <Text fontWeight="bold">Login Provider:</Text>
+                <Text>{user.providerData[0].providerId}</Text>
+              </Box>
+            )}
           </VStack>
         </Box>
 

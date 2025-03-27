@@ -1,7 +1,8 @@
-import { Box, Flex, Button, useColorModeValue, Container } from '@chakra-ui/react';
+import { Box, Flex, Button, useColorModeValue, Container, Menu, MenuButton, MenuList, MenuItem, Avatar } from '@chakra-ui/react';
 import { Link as RouterLink, useLocation, useNavigate } from 'react-router-dom';
-import { usePrivy } from '@privy-io/react-auth';
+import { useAuth } from '../contexts/AuthContext';
 import { useEffect } from 'react';
+import { ChevronDownIcon } from '@chakra-ui/icons';
 
 interface LayoutProps {
   children: React.ReactNode;
@@ -10,20 +11,28 @@ interface LayoutProps {
 const Layout = ({ children }: LayoutProps) => {
   const location = useLocation();
   const navigate = useNavigate();
-  const { login, logout, authenticated, ready } = usePrivy();
+  const { isAuthenticated, isLoading, signOut, user, walletAddress } = useAuth();
   const bgColor = useColorModeValue('white', 'gray.800');
   const borderColor = useColorModeValue('gray.200', 'gray.700');
 
   const isActive = (path: string) => location.pathname === path;
 
   useEffect(() => {
-    if (ready && authenticated) {
+    if (!isLoading && isAuthenticated) {
       // If user is on the home page after login, redirect to game
       if (location.pathname === '/') {
         navigate('/game');
       }
     }
-  }, [ready, authenticated, location.pathname, navigate]);
+  }, [isLoading, isAuthenticated, location.pathname, navigate]);
+
+  // Get the display name for the user menu
+  const getDisplayName = () => {
+    if (user?.displayName) return user.displayName;
+    if (user?.email) return user.email.split('@')[0];
+    if (walletAddress) return `${walletAddress.slice(0, 6)}...${walletAddress.slice(-4)}`;
+    return 'User';
+  };
 
   return (
     <Box minH="100vh" bg={bgColor}>
@@ -57,7 +66,7 @@ const Layout = ({ children }: LayoutProps) => {
               Home
             </Button>
           </RouterLink>
-          {authenticated && (
+          {isAuthenticated && (
             <>
               <RouterLink to="/game">
                 <Button
@@ -77,13 +86,22 @@ const Layout = ({ children }: LayoutProps) => {
               </RouterLink>
             </>
           )}
-          {authenticated ? (
-            <Button onClick={logout} colorScheme="red" variant="outline">
-              Disconnect
-            </Button>
+          {isAuthenticated ? (
+            <Menu>
+              <MenuButton as={Button} rightIcon={<ChevronDownIcon />}>
+                <Flex align="center">
+                  <Avatar size="xs" mr={2} name={getDisplayName()} />
+                  {getDisplayName()}
+                </Flex>
+              </MenuButton>
+              <MenuList>
+                <MenuItem onClick={() => navigate('/profile')}>Profile</MenuItem>
+                <MenuItem onClick={signOut}>Sign Out</MenuItem>
+              </MenuList>
+            </Menu>
           ) : (
-            <Button onClick={login} colorScheme="blue">
-              Connect Wallet
+            <Button onClick={() => navigate('/login')} colorScheme="blue">
+              Sign In
             </Button>
           )}
         </Flex>

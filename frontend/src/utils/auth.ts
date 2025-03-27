@@ -1,20 +1,45 @@
-import { jwtVerify } from 'jose';
+// Remove or comment out Privy-specific functions like verifyPrivyToken
 
-const PRIVY_JWKS_URL = 'https://auth.privy.io/api/v1/apps/cm8pvsjsw01vszityct40r9w3/jwks.json';
+import { User } from 'firebase/auth';
 
-export const verifyPrivyToken = async (token: string) => {
+/**
+ * Get the authentication token for the current user
+ * @param user Firebase user object
+ * @returns Promise with the ID token
+ */
+export const getAuthToken = async (user: User): Promise<string | null> => {
+  if (!user) return null;
+
   try {
-    const response = await fetch(PRIVY_JWKS_URL);
-    const jwks = await response.json();
-    
-    const { payload } = await jwtVerify(token, jwks, {
-      issuer: 'https://auth.privy.io',
-      audience: 'cm8pvsjsw01vszityct40r9w3'
-    });
-
-    return payload;
+    return await user.getIdToken();
   } catch (error) {
-    console.error('Token verification failed:', error);
+    console.error('Error getting auth token:', error);
     return null;
   }
+};
+
+/**
+ * Add authorization headers to a fetch request
+ * @param headers Headers object to add authorization to
+ * @param token Auth token
+ */
+export const addAuthHeaders = (headers = {}, token: string | null): HeadersInit => {
+  if (!token) return headers;
+  
+  return {
+    ...headers,
+    'Authorization': `Bearer ${token}`
+  };
+};
+
+/**
+ * Create an authenticated fetch function that automatically adds auth headers
+ * @param token Auth token
+ * @returns Fetch function with auth headers
+ */
+export const createAuthFetch = (token: string | null) => {
+  return async (url: string, options: RequestInit = {}) => {
+    const headers = addAuthHeaders(options.headers, token);
+    return fetch(url, { ...options, headers });
+  };
 }; 

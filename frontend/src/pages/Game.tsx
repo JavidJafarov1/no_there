@@ -8,7 +8,7 @@ import {
   useToast,
   useColorModeValue,
 } from '@chakra-ui/react';
-import { usePrivy } from '@privy-io/react-auth';
+import { useAuth } from '../contexts/AuthContext';
 import { io, Socket } from 'socket.io-client';
 import { useNavigate } from 'react-router-dom';
 
@@ -18,7 +18,7 @@ interface Player {
 }
 
 const Game = () => {
-  const { user, authenticated } = usePrivy();
+  const { user, walletAddress, isAuthenticated } = useAuth();
   const [socket, setSocket] = useState<Socket | null>(null);
   const [players, setPlayers] = useState<Player[]>([]);
   const [gameState, setGameState] = useState({
@@ -31,7 +31,7 @@ const Game = () => {
   const toast = useToast();
 
   useEffect(() => {
-    if (!authenticated || !user) {
+    if (!isAuthenticated) {
       navigate('/');
       return;
     }
@@ -69,9 +69,11 @@ const Game = () => {
             duration: 3000,
           });
           
+          // Send authentication data to server
           newSocket.emit('authenticate', {
-            userId: user.id,
-            walletAddress: user.wallet?.address
+            userId: user?.uid || 'anonymous',
+            walletAddress: walletAddress || undefined,
+            email: user?.email || undefined
           });
         });
 
@@ -122,7 +124,7 @@ const Game = () => {
           duration: 3000,
         });
       });
-  }, [authenticated, user, navigate, toast]);
+  }, [isAuthenticated, user, walletAddress, navigate, toast]);
 
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
@@ -163,10 +165,10 @@ const Game = () => {
     };
   }, [socket]);
 
-  if (!authenticated) {
+  if (!isAuthenticated) {
     return (
       <Box p={4}>
-        <Text>Please connect your wallet to play</Text>
+        <Text>Please sign in or connect your wallet to play</Text>
       </Box>
     );
   }

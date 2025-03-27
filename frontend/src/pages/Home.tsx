@@ -10,7 +10,7 @@ import {
   useColorModeValue,
 } from '@chakra-ui/react';
 import { useNavigate } from 'react-router-dom';
-import { usePrivy } from '@privy-io/react-auth';
+import { useAuth } from '../contexts/AuthContext';
 import { FaEthereum, FaUsers, FaLock } from 'react-icons/fa';
 
 const Feature = ({ title, text, icon }: { title: string; text: string; icon: React.ElementType }) => {
@@ -36,7 +36,7 @@ const Feature = ({ title, text, icon }: { title: string; text: string; icon: Rea
 
 const Home = () => {
   const navigate = useNavigate();
-  const { login, authenticated } = usePrivy();
+  const { isAuthenticated } = useAuth();
 
   return (
     <Box maxW="7xl" mx="auto" px={{ base: 4, sm: 6, lg: 8 }} py={12}>
@@ -54,7 +54,7 @@ const Home = () => {
           Experience the future of online gaming with blockchain integration, real-time multiplayer
           interactions, and immersive gameplay.
         </Text>
-        {authenticated ? (
+        {isAuthenticated ? (
           <Button
             size="lg"
             colorScheme="blue"
@@ -66,7 +66,7 @@ const Home = () => {
           <Button
             size="lg"
             colorScheme="blue"
-            onClick={login}
+            onClick={() => navigate('/login')}
           >
             Connect to Play
           </Button>
@@ -76,7 +76,7 @@ const Home = () => {
       <SimpleGrid columns={{ base: 1, md: 3 }} spacing={10} mt={16}>
         <Feature
           title="Blockchain Integration"
-          text="Connect with your wallet or email for secure authentication and seamless gameplay."
+          text="Connect with your wallet or social account for secure authentication and seamless gameplay."
           icon={FaEthereum}
         />
         <Feature

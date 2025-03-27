@@ -1,50 +1,46 @@
 import { ChakraProvider } from '@chakra-ui/react';
 import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
-import { PrivyProvider } from '@privy-io/react-auth';
+import { WagmiConfig } from 'wagmi';
+import { wagmiConfig } from './config/web3';
+import { AuthProvider } from './contexts/AuthContext';
 import Layout from './components/Layout';
 import Home from './pages/Home';
 import Game from './pages/Game';
 import Profile from './pages/Profile';
 import ProtectedRoute from './components/ProtectedRoute';
+import Login from './pages/Login';
 
 function App() {
   return (
     <ChakraProvider>
-      <PrivyProvider
-        appId={import.meta.env.VITE_PRIVY_APP_ID}
-        config={{
-          loginMethods: ['email', 'wallet', 'google', 'twitter'],
-          appearance: {
-            theme: 'dark',
-            accentColor: '#676FFF',
-            showWalletLoginFirst: true,
-          },
-        }}
-      >
-        <Router>
-          <Layout>
-            <Routes>
-              <Route path="/" element={<Home />} />
-              <Route
-                path="/game"
-                element={
-                  <ProtectedRoute>
-                    <Game />
-                  </ProtectedRoute>
-                }
-              />
-              <Route
-                path="/profile"
-                element={
-                  <ProtectedRoute>
-                    <Profile />
-                  </ProtectedRoute>
-                }
-              />
-            </Routes>
-          </Layout>
-        </Router>
-      </PrivyProvider>
+      <WagmiConfig config={wagmiConfig}>
+        <AuthProvider>
+          <Router>
+            <Layout>
+              <Routes>
+                <Route path="/" element={<Home />} />
+                <Route path="/login" element={<Login />} />
+                <Route
+                  path="/game"
+                  element={
+                    <ProtectedRoute>
+                      <Game />
+                    </ProtectedRoute>
+                  }
+                />
+                <Route
+                  path="/profile"
+                  element={
+                    <ProtectedRoute>
+                      <Profile />
+                    </ProtectedRoute>
+                  }
+                />
+              </Routes>
+            </Layout>
+          </Router>
+        </AuthProvider>
+      </WagmiConfig>
     </ChakraProvider>
   );
 }
