@@ -7,10 +7,10 @@ const isDevelopment = process.env.NODE_ENV !== 'production';
 
 if (isDevelopment) {
   app.use(cors({
-    origin: true, // Allow all origins in development
+    origin: 'http://localhost:5000', // Your frontend URL
     credentials: true,
     methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
-    allowedHeaders: ['Content-Type', 'Authorization', 'Accept']
+    allowedHeaders: ['Content-Type', 'Authorization']
   }));
 } else {
   app.use(cors({

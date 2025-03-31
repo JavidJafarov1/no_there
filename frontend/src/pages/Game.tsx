@@ -85,98 +85,53 @@ const Game = () => {
     if (!isAuthenticated) return;
 
     const findBackendServer = async () => {
-      const baseUrl = import.meta.env.VITE_API_URL || 'http://localhost';
-      const port = 3001;  // Fixed port for our server
-      
       try {
-        console.log(`Connecting to server at ${baseUrl}:${port}`);
-        const response = await fetch(`${baseUrl}:${port}/health`, {
-          mode: 'cors',
+        console.log('Checking server connection...');
+        const response = await fetch('http://localhost:3001/health', {
           credentials: 'include',
           headers: {
-            'Accept': 'application/json',
             'Content-Type': 'application/json'
           }
         });
         
-        if (response.ok) {
-          return `${baseUrl}:${port}`;
+        if (!response.ok) {
+          throw new Error(`Server responded with status: ${response.status}`);
         }
-        throw new Error('Server health check failed');
+        
+        return 'http://localhost:3001';
       } catch (error) {
         console.error('Server connection error:', error);
         throw error;
       }
     };
 
-    findBackendServer()
-      .then((serverUrl) => {
-        console.log('Connecting to socket on:', serverUrl);
-        const newSocket = io(serverUrl, {
+    const initSocket = async () => {
+      try {
+        const serverUrl = await findBackendServer();
+        // Make sure socket.io-client is imported
+        const socket = io(serverUrl, {
           withCredentials: true,
-          transports: ['websocket', 'polling'],
+          transports: ['websocket'],
           reconnectionAttempts: 5,
-          reconnectionDelay: 1000,
-          timeout: 10000
+          reconnectionDelay: 1000
         });
-        setSocket(newSocket);
 
-        newSocket.on('connect', () => {
+        socket.on('connect', () => {
           console.log('Socket connected successfully');
-          toast({
-            title: 'Connected to game server',
-            status: 'success',
-            duration: 3000,
-          });
-          
-          // Send authentication data to server
-          const authData = {
-            userId: user?.uid || 'anonymous',
-            walletAddress: walletAddress || undefined,
-            email: user?.email || undefined
-          };
-          console.log('Sending auth data:', authData);
-          newSocket.emit('authenticate', authData);
-
-          // Make socket available to the game engine
-          window.gameSocket = newSocket;
         });
 
-        newSocket.on('connect_error', (error) => {
+        socket.on('connect_error', (error) => {
           console.error('Socket connection error:', error);
-          toast({
-            title: 'Connection error',
-            description: `Failed to connect to game server: ${error.message}`,
-            status: 'error',
-            duration: 3000,
-          });
         });
 
-        newSocket.on('error', (error) => {
-          console.error('Socket error:', error);
-          toast({
-            title: 'Socket error',
-            description: `Server error: ${error.message}`,
-            status: 'error',
-            duration: 3000,
-          });
-        });
+        setSocket(socket);
+      } catch (error) {
+        console.error('Failed to initialize socket:', error);
+      }
+    };
 
-        return () => {
-          console.log('Cleaning up socket connection');
-          newSocket.disconnect();
-        };
-      })
-      .catch((error) => {
-        console.error('Server connection error:', error);
-        toast({
-          title: 'Server error',
-          description: `Could not connect to game server: ${error.message}`,
-          status: 'error',
-          duration: 3000,
-        });
-      });
-  }, [isAuthenticated, user, walletAddress, navigate, toast]);
+    initSocket();
+  }, []);
 
   if (!isAuthenticated) {
     return (
