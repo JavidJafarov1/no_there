@@ -12,21 +12,9 @@ import { useAuth } from '../contexts/AuthContext';
 import { io, Socket } from 'socket.io-client';
 import { useNavigate } from 'react-router-dom';
 
-interface Player {
-  address: string;
-  position: { x: number; y: number };
-}
-
 const Game = () => {
   const { user, walletAddress, isAuthenticated } = useAuth();
   const [socket, setSocket] = useState<Socket | null>(null);
-  const [players, setPlayers] = useState<Player[]>([]);
-  const [gameState, setGameState] = useState({
-    players: {},
-    position: { x: 0, y: 0 }
-  });
-  const gameLoopRef = useRef<number>();
-  const keysRef = useRef<Set<string>>(new Set());
   const navigate = useNavigate();
   const toast = useToast();
 
@@ -36,33 +24,105 @@ const Game = () => {
       return;
     }
 
-    // Function to find the active backend server
+    // Create canvas element first
+    const canvas = document.createElement('canvas');
+    canvas.id = 'canvas';
+    const container = document.getElementById('game-container');
+    if (container) {
+      container.appendChild(canvas);
+    }
+
+    // Check if script is already loaded
+    if (!document.getElementById('game-engine-script')) {
+      // Load style.css
+      const style = document.createElement('link');
+      style.rel = 'stylesheet';
+      style.href = '/style.css';
+      document.head.appendChild(style);
+
+      // Load artwork.js with proper ID and error handling
+      const script = document.createElement('script');
+      script.id = 'game-engine-script';  // Add ID to prevent duplicate loading
+      script.src = '/artwork.js';
+      script.async = true;
+      
+      script.onerror = (e) => {
+        console.error('Error loading artwork.js:', e);
+        toast({
+          title: 'Error loading game engine',
+          description: 'Could not load artwork.js. Please check if the file is in the correct location.',
+          status: 'error',
+          duration: 5000,
+        });
+      };
+
+      script.onload = () => {
+        console.log('Game engine loaded successfully');
+        toast({
+          title: 'Game engine loaded',
+          status: 'success',
+          duration: 3000,
+        });
+      };
+
+      document.body.appendChild(script);
+    }
+
+    return () => {
+      // Only remove elements if they exist
+      const style = document.querySelector('link[href="/style.css"]');
+      const script = document.getElementById('game-engine-script');
+      
+      if (style) document.head.removeChild(style);
+      if (script) document.body.removeChild(script);
+      if (container && canvas) {
+        container.removeChild(canvas);
+      }
+    };
+  }, []);
+
+  useEffect(() => {
+    if (!isAuthenticated) return;
+
     const findBackendServer = async () => {
       const baseUrl = import.meta.env.VITE_API_URL || 'http://localhost';
-      const startPort = 3001;
-      const maxPort = 3010; // We'll try ports 3001-3010
-
-      for (let port = startPort; port <= maxPort; port++) {
-        try {
-          const response = await fetch(`${baseUrl}:${port}/health`);
-          if (response.ok) {
-            return `${baseUrl}:${port}`;
+      const port = 3001;  // Fixed port for our server
+      
+      try {
+        console.log(`Connecting to server at ${baseUrl}:${port}`);
+        const response = await fetch(`${baseUrl}:${port}/health`, {
+          mode: 'cors',
+          credentials: 'include',
+          headers: {
+            'Accept': 'application/json',
+            'Content-Type': 'application/json'
           }
-        } catch (error) {
-          continue;
+        });
+        
+        if (response.ok) {
+          return `${baseUrl}:${port}`;
         }
+        throw new Error('Server health check failed');
+      } catch (error) {
+        console.error('Server connection error:', error);
+        throw error;
       }
-      throw new Error('No available backend server found');
     };
 
-    // Connect to the backend server
     findBackendServer()
       .then((serverUrl) => {
-        const newSocket = io(serverUrl);
+        console.log('Connecting to socket on:', serverUrl);
+        const newSocket = io(serverUrl, {
+          withCredentials: true,
+          transports: ['websocket', 'polling'],
+          reconnectionAttempts: 5,
+          reconnectionDelay: 1000,
+          timeout: 10000
+        });
         setSocket(newSocket);
 
         newSocket.on('connect', () => {
-          console.log('Connected to server');
+          console.log('Socket connected successfully');
           toast({
             title: 'Connected to game server',
             status: 'success',
@@ -70,48 +130,40 @@ const Game = () => {
           });
           
           // Send authentication data to server
-          newSocket.emit('authenticate', {
+          const authData = {
             userId: user?.uid || 'anonymous',
             walletAddress: walletAddress || undefined,
             email: user?.email || undefined
-          });
-        });
+          };
+          console.log('Sending auth data:', authData);
+          newSocket.emit('authenticate', authData);
 
-        newSocket.on('gameState', (state) => {
-          setGameState(state);
+          // Make socket available to the game engine
+          window.gameSocket = newSocket;
         });
 
         newSocket.on('connect_error', (error) => {
-          console.error('Connection error:', error);
+          console.error('Socket connection error:', error);
           toast({
             title: 'Connection error',
-            description: 'Failed to connect to game server',
+            description: `Failed to connect to game server: ${error.message}`,
             status: 'error',
             duration: 3000,
           });
         });
 
-        newSocket.on('userMoved', (data: Player) => {
-          setPlayers((prevPlayers) => {
-            const existingPlayerIndex = prevPlayers.findIndex(
-              (p) => p.address === data.address
-            );
-            if (existingPlayerIndex >= 0) {
-              const newPlayers = [...prevPlayers];
-              newPlayers[existingPlayerIndex] = data;
-              return newPlayers;
-            }
-            return [...prevPlayers, data];
+        newSocket.on('error', (error) => {
+          console.error('Socket error:', error);
+          toast({
+            title: 'Socket error',
+            description: `Server error: ${error.message}`,
+            status: 'error',
+            duration: 3000,
           });
         });
 
-        newSocket.on('userLeft', (data: { address: string }) => {
-          setPlayers((prevPlayers) =>
-            prevPlayers.filter((p) => p.address !== data.address)
-          );
-        });
-
         return () => {
+          console.log('Cleaning up socket connection');
           newSocket.disconnect();
         };
       })
@@ -119,51 +171,12 @@ const Game = () => {
         console.error('Server connection error:', error);
         toast({
           title: 'Server error',
-          description: 'Could not find an available game server',
+          description: `Could not connect to game server: ${error.message}`,
           status: 'error',
           duration: 3000,
         });
       });
   }, [isAuthenticated, user, walletAddress, navigate, toast]);
-
-  useEffect(() => {
-    const handleKeyDown = (e: KeyboardEvent) => {
-      keysRef.current.add(e.key);
-    };
-
-    const handleKeyUp = (e: KeyboardEvent) => {
-      keysRef.current.delete(e.key);
-    };
-
-    window.addEventListener('keydown', handleKeyDown);
-    window.addEventListener('keyup', handleKeyUp);
-
-    return () => {
-      window.removeEventListener('keydown', handleKeyDown);
-      window.removeEventListener('keyup', handleKeyUp);
-    };
-  }, []);
-
-  useEffect(() => {
-    const gameLoop = () => {
-      if (!socket) return;
-
-      const keys = Array.from(keysRef.current);
-      if (keys.length > 0) {
-        socket.emit('playerMove', { keys });
-      }
-
-      gameLoopRef.current = requestAnimationFrame(gameLoop);
-    };
-
-    gameLoopRef.current = requestAnimationFrame(gameLoop);
-
-    return () => {
-      if (gameLoopRef.current) {
-        cancelAnimationFrame(gameLoopRef.current);
-      }
-    };
-  }, [socket]);
 
   if (!isAuthenticated) {
     return (
@@ -174,9 +187,8 @@ const Game = () => {
   }
 
   return (
-    <VStack spacing={4} align="stretch" h="calc(100vh - 80px)">
-      <HStack justify="space-between">
-        <Text fontSize="xl">Players Online: {players.length}</Text>
+    <VStack spacing={4} align="stretch" h="100vh">
+      <HStack justify="flex-end" p={4}>
         <Button
           colorScheme="red"
           onClick={() => {
@@ -192,20 +204,10 @@ const Game = () => {
 
       <Box
         flex={1}
-        bg={useColorModeValue('gray.100', 'gray.700')}
-        rounded="md"
-        overflow="hidden"
-      >
-        <canvas
-          width={800}
-          height={600}
-          style={{ width: '100%', height: '100%' }}
-        />
-      </Box>
-
-      <Text fontSize="sm" textAlign="center" color="gray.500">
-        Use arrow keys to move your character
-      </Text>
+        bg={useColorModeValue('black', 'black')}
+        id="game-container"
+        position="relative"
+      />
     </VStack>
   );
 };
