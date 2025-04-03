@@ -1,4 +1,4 @@
-import React, { useEffect, useRef, useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import {
   Box,
   VStack,
@@ -9,12 +9,16 @@ import {
   useColorModeValue,
 } from '@chakra-ui/react';
 import { useAuth } from '../contexts/AuthContext';
-import { io, Socket } from 'socket.io-client';
 import { useNavigate } from 'react-router-dom';
+import { GameEngine } from '../services/GameEngine';
+import { GameSocket } from '../services/GameSocket';
 
-const Game = () => {
+const Game: React.FC = () => {
   const { user, walletAddress, isAuthenticated } = useAuth();
-  const [socket, setSocket] = useState<Socket | null>(null);
+  const [gameEngine, setGameEngine] = useState<GameEngine | null>(null);
+  const [gameSocket, setGameSocket] = useState<GameSocket | null>(null);
+  const [isEngineLoaded, setIsEngineLoaded] = useState(false);
+  const [isSocketConnected, setIsSocketConnected] = useState(false);
   const navigate = useNavigate();
   const toast = useToast();
 
@@ -24,114 +28,80 @@ const Game = () => {
       return;
     }
 
-    // Create canvas element first
-    const canvas = document.createElement('canvas');
-    canvas.id = 'canvas';
-    const container = document.getElementById('game-container');
-    if (container) {
-      container.appendChild(canvas);
-    }
-
-    // Check if script is already loaded
-    if (!document.getElementById('game-engine-script')) {
-      // Load style.css
-      const style = document.createElement('link');
-      style.rel = 'stylesheet';
-      style.href = '/style.css';
-      document.head.appendChild(style);
-
-      // Load artwork.js with proper ID and error handling
-      const script = document.createElement('script');
-      script.id = 'game-engine-script';  // Add ID to prevent duplicate loading
-      script.src = '/artwork.js';
-      script.async = true;
-      
-      script.onerror = (e) => {
-        console.error('Error loading artwork.js:', e);
+    const engine = new GameEngine({
+      containerId: 'game-container',
+      socketioScriptUrl: 'https://cdn.socket.io/4.5.4/socket.io.min.js',
+      gameScriptUrl: '/artwork.js',
+      styleUrl: '/style.css',
+      onError: (error) => {
         toast({
           title: 'Error loading game engine',
-          description: 'Could not load artwork.js. Please check if the file is in the correct location.',
+          description: error.message,
           status: 'error',
           duration: 5000,
+          isClosable: true,
         });
-      };
-
-      script.onload = () => {
-        console.log('Game engine loaded successfully');
+      },
+      onSuccess: () => {
+        setIsEngineLoaded(true);
         toast({
           title: 'Game engine loaded',
           status: 'success',
           duration: 3000,
         });
-      };
+      },
+    });
 
-      document.body.appendChild(script);
-    }
+    engine.initialize();
+    setGameEngine(engine);
 
     return () => {
-      // Only remove elements if they exist
-      const style = document.querySelector('link[href="/style.css"]');
-      const script = document.getElementById('game-engine-script');
-      
-      if (style) document.head.removeChild(style);
-      if (script) document.body.removeChild(script);
-      if (container && canvas) {
-        container.removeChild(canvas);
-      }
+      engine.cleanup();
+      setIsEngineLoaded(false);
     };
-  }, []);
+  }, [isAuthenticated, navigate, toast]);
 
   useEffect(() => {
-    if (!isAuthenticated) return;
+    if (!isAuthenticated || !isEngineLoaded) return;
 
-    const findBackendServer = async () => {
-      try {
-        console.log('Checking server connection...');
-        const response = await fetch('http://localhost:3001/health', {
-          credentials: 'include',
-          headers: {
-            'Content-Type': 'application/json'
-          }
+    const socket = new GameSocket({
+      serverUrl: 'http://localhost:3001',
+      onConnect: () => {
+        setIsSocketConnected(true);
+        toast({
+          title: 'Connected to game server',
+          status: 'success',
+          duration: 3000,
         });
-        
-        if (!response.ok) {
-          throw new Error(`Server responded with status: ${response.status}`);
-        }
-        
-        return 'http://localhost:3001';
-      } catch (error) {
-        console.error('Server connection error:', error);
-        throw error;
-      }
+      },
+      onDisconnect: () => {
+        setIsSocketConnected(false);
+        toast({
+          title: 'Disconnected from server',
+          status: 'warning',
+          duration: 3000,
+        });
+      },
+      onError: (error) => {
+        setIsSocketConnected(false);
+        toast({
+          title: 'Connection error',
+          description: error.message,
+          status: 'error',
+          duration: 5000,
+          isClosable: true,
+        });
+      },
+    });
+
+    socket.connect();
+    setGameSocket(socket);
+
+    return () => {
+      socket.disconnect();
+      setIsSocketConnected(false);
     };
-
-    const initSocket = async () => {
-      try {
-        const serverUrl = await findBackendServer();
-        // Make sure socket.io-client is imported
-        const socket = io(serverUrl, {
-          withCredentials: true,
-          transports: ['websocket'],
-          reconnectionAttempts: 5,
-          reconnectionDelay: 1000
-        });
-
-        socket.on('connect', () => {
-          console.log('Socket connected successfully');
-        });
-
-        socket.on('connect_error', (error) => {
-          console.error('Socket connection error:', error);
-        });
-
-        setSocket(socket);
-      } catch (error) {
-        console.error('Failed to initialize socket:', error);
-      }
-    };
-
-    initSocket();
-  }, []);
+  }, [isAuthenticated, isEngineLoaded, toast]);
 
   if (!isAuthenticated) {
     return (
@@ -143,13 +113,14 @@ const Game = () => {
 
   return (
     <VStack spacing={4} align="stretch" h="100vh">
-      <HStack justify="flex-end" p={4}>
+      <HStack justify="space-between" p={4}>
+        <Text>
+          Status: {isSocketConnected ? 'Connected' : 'Disconnected'}
+        </Text>
         <Button
           colorScheme="red"
           onClick={() => {
-            if (socket) {
-              socket.disconnect();
-            }
+            gameSocket?.disconnect();
             navigate('/');
           }}
         >
