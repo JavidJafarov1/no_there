@@ -40,14 +40,21 @@ const Game: React.FC = () => {
       return;
     }
 
-    // Check game engine
+    // Check game engine and its readiness
     if (!window.gameEngine) {
       console.warn('Game engine not loaded - cannot process movement');
       return;
     }
 
+    // Check if game engine is initialized
+    if (!isEngineLoaded) {
+      console.warn('Game engine not initialized yet');
+      return;
+    }
+
     // Check if game engine has required methods
-    if (!window.gameEngine.getPlayerPosition || !window.gameEngine.updatePlayerPosition) {
+    if (typeof window.gameEngine.getPlayerPosition !== 'function' || 
+        typeof window.gameEngine.updatePlayerPosition !== 'function') {
       console.warn('Game engine missing required methods - cannot process movement');
       return;
     }
@@ -76,6 +83,10 @@ const Game: React.FC = () => {
     try {
       // Get current position from game engine
       const currentPosition = window.gameEngine.getPlayerPosition();
+      if (!currentPosition) {
+        console.warn('Could not get current position from game engine');
+        return;
+      }
       
       // Calculate new position with bounds checking
       const newPosition = {
@@ -104,7 +115,7 @@ const Game: React.FC = () => {
         duration: 3000,
       });
     }
-  }, [isSocketConnected, gameSocket, toast]);
+  }, [isSocketConnected, gameSocket, toast, isEngineLoaded]);
 
   useEffect(() => {
     if (!walletAddress) {
@@ -126,10 +137,13 @@ const Game: React.FC = () => {
   }, [handleResize, handleKeyDown]);
 
   const leaveGame = async () => {
+    // Disconnect socket
     if (gameSocket) {
       gameSocket.disconnect();
       setGameSocket(null);
     }
+
+    // Cleanup game engine
     if (gameEngine) {
       gameEngine.cleanup();
       setGameEngine(null);
@@ -137,54 +151,37 @@ const Game: React.FC = () => {
     }
     setIsSocketConnected(false);
 
-    // Clean up the canvas element
+    // Clean up the canvas and observer
     const container = document.getElementById('game-container');
     if (container) {
+      // Remove canvas
       const canvas = document.getElementById('canvas');
       if (canvas) {
         container.removeChild(canvas);
       }
     }
 
-    // Remove all scripts and wait for them to be removed
-    const scriptsToRemove = [
-      document.getElementById('game-engine-script'),
-      document.getElementById('socketio-script'),
-      document.querySelector('link[href="/style.css"]')
-    ];
+    // Remove all scripts
+    const scriptsToRemove = document.querySelectorAll('script[data-game-script]');
+    scriptsToRemove.forEach(script => script.remove());
 
-    scriptsToRemove.forEach(script => {
-      if (script && script.parentNode) {
-        script.parentNode.removeChild(script);
-      }
-    });
+    // Remove style
+    const styleLink = document.querySelector('link[href="/style.css"]');
+    if (styleLink) {
+      styleLink.remove();
+    }
 
-    // Wait a bit to ensure scripts are fully removed
+    // Wait a bit to ensure cleanup is complete
     await new Promise(resolve => setTimeout(resolve, 100));
   };
 
   const initializeGame = async () => {
+    console.log('Starting game initialization...');
     try {
-      // Prevent multiple initializations
-      if (isEngineLoaded || isSocketConnected) {
-        console.log('Game already initialized');
-        return;
-      }
-
-      console.log('Starting game initialization...');
-      console.log('Current auth state:', {
-        walletAddress,
-        isSocketConnected
-      });
-
-      // Clean up any existing game state
+      // Clean up existing game state
       await leaveGame();
-      console.log('Previous game state cleaned up');
-
-      // Wait for cleanup to complete
-      await new Promise(resolve => setTimeout(resolve, 100));
-
-      // Create and setup canvas first
+      
+      // Create new canvas
       const container = document.getElementById('game-container');
       if (!container) {
         throw new Error('Game container not found');
@@ -203,153 +200,238 @@ const Game: React.FC = () => {
       canvas.width = containerWidth;
       canvas.height = containerHeight;
 
-      // Load socket.io script
-      console.log('Loading socket.io script...');
-      const socketioScript = document.createElement('script');
-      socketioScript.id = 'socketio-script';
-      socketioScript.src = 'https://cdn.socket.io/4.5.4/socket.io.min.js';
-      await new Promise((resolve, reject) => {
-        socketioScript.onload = () => {
-          console.log('Socket.io script loaded successfully');
-          resolve(true);
-        };
-        socketioScript.onerror = (error) => {
-          console.error('Failed to load socket.io script:', error);
-          reject(error);
-        };
-        document.head.appendChild(socketioScript);
-      });
-
-      // Initialize socket first
-      console.log('Initializing socket connection...');
-      const socket = new GameSocket({
-        serverUrl: 'http://localhost:3001',
-        onConnect: () => {
-          console.log('Socket connected, authenticating...');
-          // Only send wallet address for authentication
-          socket.emit('authenticate', {
-            address: walletAddress
-          });
-        },
-        onDisconnect: (reason: string) => {
-          console.log('Socket disconnected:', reason);
-          setIsSocketConnected(false);
-          toast({
-            title: 'Disconnected from server',
-            description: `Reason: ${reason}`,
-            status: 'warning',
-            duration: 3000,
-          });
-        },
-        onError: (error) => {
-          console.error('Socket error:', error);
-          setIsSocketConnected(false);
-          toast({
-            title: 'Connection error',
-            description: error.message,
-            status: 'error',
-            duration: 5000,
-          });
-        },
-      });
-
-      // Connect socket
-      socket.connect();
-      setGameSocket(socket);
-
-      // Wait for socket connection and authentication
-      console.log('Waiting for socket connection and authentication...');
-      await new Promise((resolve, reject) => {
-        let attempts = 0;
-        const maxAttempts = 50; // 5 seconds total
-        const checkSocket = () => {
-          attempts++;
-          const isConnected = socket.isConnected();
-          const isAuthenticated = socket.isAuthenticated();
-          
-          console.log(`Connection check attempt ${attempts}/${maxAttempts}:`, {
-            isConnected,
-            isAuthenticated
-          });
-
-          if (isConnected && isAuthenticated) {
-            console.log('Socket connected and authenticated successfully');
-            setIsSocketConnected(true);
-            toast({
-              title: 'Connected to game server',
-              status: 'success',
-              duration: 3000,
-            });
-            resolve(true);
-          } else if (attempts >= maxAttempts) {
-            const error = new Error(
-              `Socket connection timed out. Connection: ${isConnected}, Authentication: ${isAuthenticated}`
-            );
-            console.error(error);
-            reject(error);
-          } else {
-            setTimeout(checkSocket, 100);
+      // Add resize observer to handle container size changes
+      const resizeObserver = new ResizeObserver((entries) => {
+        for (const entry of entries) {
+          if (entry.target === container) {
+            const canvas = document.getElementById('canvas') as HTMLCanvasElement;
+            if (canvas) {
+              canvas.width = entry.contentRect.width;
+              canvas.height = entry.contentRect.height;
+            }
           }
-        };
-        checkSocket();
+        }
       });
+      resizeObserver.observe(container);
 
-      // Load game engine script
+      // Load game engine script with cache busting
       console.log('Loading game engine script...');
-      const gameScript = document.createElement('script');
-      const uniqueId = Date.now();
-      gameScript.id = `game-engine-script-${uniqueId}`;
-      gameScript.src = `/artwork.js?t=${uniqueId}`; // Add timestamp to prevent caching
-      await new Promise((resolve, reject) => {
-        gameScript.onload = () => {
-          console.log('Game engine script loaded successfully');
-          resolve(true);
-        };
-        gameScript.onerror = (error) => {
-          console.error('Failed to load game engine script:', error);
-          reject(error);
-        };
-        document.head.appendChild(gameScript);
-      });
+      const timestamp = Date.now();
 
-      // Load style
+      // Load all required scripts in sequence
+      const loadScript = async (src: string): Promise<void> => {
+        return new Promise((resolve, reject) => {
+          const script = document.createElement('script');
+          script.src = src;
+          script.type = 'text/javascript';
+          script.onload = () => resolve();
+          script.onerror = () => reject(new Error(`Failed to load script: ${src}`));
+          document.head.appendChild(script);
+        });
+      };
+
+      // Load style.css first
       const styleLink = document.createElement('link');
       styleLink.rel = 'stylesheet';
       styleLink.href = '/style.css';
       document.head.appendChild(styleLink);
 
-      // Wait for game engine initialization
-      console.log('Waiting for game engine initialization...');
-      await new Promise((resolve) => {
-        const checkGameEngine = () => {
-          if (window.gameEngine && 
-              typeof window.gameEngine.getPlayerPosition === 'function' &&
-              typeof window.gameEngine.updatePlayerPosition === 'function') {
-            console.log('Game engine initialized successfully');
-            resolve(true);
-          } else {
-            setTimeout(checkGameEngine, 100);
+      try {
+        // Load dependencies in order
+        console.log('Loading dependencies...');
+        await loadScript('https://cdnjs.cloudflare.com/ajax/libs/gl-matrix/2.8.1/gl-matrix-min.js');
+        await loadScript('https://cdn.socket.io/4.5.4/socket.io.min.js');
+        
+        // Load main game script with absolute path
+        console.log('Loading main game script...');
+        
+        // First verify the file is accessible
+        try {
+          const response = await fetch('/artwork.js');
+          if (!response.ok) {
+            throw new Error(`Failed to fetch artwork.js: ${response.status} ${response.statusText}`);
           }
-        };
-        checkGameEngine();
-      });
+          const content = await response.text();
+          console.log('Artwork.js content check:', {
+            length: content.length,
+            hasTimeClass: content.includes('class Time'),
+            hasCirclesClass: content.includes('class ConvertedGLSLs_circles'),
+            hasOPClass: content.includes('class OP'),
+            firstFewChars: content.substring(0, 100)
+          });
 
-      // Initialize game engine
-      console.log('Initializing game engine...');
-      if (window.gameEngine) {
-        window.gameEngine.initialize();
+          // Create a script element to execute the content
+          const scriptElement = document.createElement('script');
+          scriptElement.type = 'text/javascript';
+          
+          // Wrap the content in an IIFE to ensure proper scope
+          const wrappedContent = `
+            (function(window) {
+              ${content}
+              // Export classes to window
+              window.Time = Time;
+              window.OP = OP;
+              window.ConvertedGLSLs_circles = ConvertedGLSLs_circles;
+            })(window);
+          `;
+          
+          scriptElement.textContent = wrappedContent;
+          document.head.appendChild(scriptElement);
+
+          // Verify classes are available
+          const checkClasses = () => {
+            const timeClass = (window as any).Time;
+            const circlesClass = (window as any).ConvertedGLSLs_circles;
+            const opClass = (window as any).OP;
+            
+            console.log('Class availability check:', {
+              Time: {
+                exists: !!timeClass,
+                type: typeof timeClass,
+                constructor: timeClass?.toString?.()
+              },
+              ConvertedGLSLs_circles: {
+                exists: !!circlesClass,
+                type: typeof circlesClass,
+                constructor: circlesClass?.toString?.()
+              },
+              OP: {
+                exists: !!opClass,
+                type: typeof opClass,
+                constructor: opClass?.toString?.()
+              }
+            });
+
+            return timeClass && circlesClass && opClass;
+          };
+
+          // Wait for classes to be available
+          await new Promise<void>((resolve, reject) => {
+            let attempts = 0;
+            const maxAttempts = 50; // 5 seconds total
+            const interval = setInterval(() => {
+              attempts++;
+              if (checkClasses()) {
+                clearInterval(interval);
+                resolve();
+              } else if (attempts >= maxAttempts) {
+                clearInterval(interval);
+                reject(new Error('Required classes not found after script execution'));
+              }
+            }, 100);
+          });
+
+        } catch (error) {
+          console.error('Failed to load artwork.js:', error);
+          throw error;
+        }
+
+        // Initialize socket connection
+        console.log('Initializing socket connection...');
+        const socket = new GameSocket({
+          serverUrl: 'http://localhost:3001',
+          onConnect: () => {
+            console.log('Socket connected successfully');
+            setIsSocketConnected(true);
+          },
+          onDisconnect: (reason: string) => {
+            console.log('Socket disconnected:', reason);
+            setIsSocketConnected(false);
+          },
+          onError: (error: Error) => {
+            console.error('Socket error:', error);
+            setIsSocketConnected(false);
+          },
+        });
+
+        socket.connect();
+        setGameSocket(socket);
+
+        // Now that we know the script is loaded and executed, initialize the engine
+        console.log('Initializing game engine...');
+        
+        // Get WebGL2 context
+        const canvas = document.getElementById('canvas') as HTMLCanvasElement;
+        const gl = canvas.getContext('webgl2');
+        if (!gl) {
+          throw new Error('WebGL2 context not available');
+        }
+
+        // Create Time instance
+        const time = new (window as any).Time();
+        console.log('Time instance created');
+
+        // Create game engine instance
+        (window as any).gameEngine = new (window as any).ConvertedGLSLs_circles('gameEngine', time, gl);
+        console.log('Game engine instance created');
+
+        // Initialize required properties
+        (window as any).gameEngine.par = {
+          Multiplayerop: [{
+            players: {},
+            updatePlayer: (playerId: string, data: any) => {
+              if (!(window as any).gameEngine.par.Multiplayerop[0].players) {
+                (window as any).gameEngine.par.Multiplayerop[0].players = {};
+              }
+              (window as any).gameEngine.par.Multiplayerop[0].players[playerId] = data;
+            }
+          }],
+          Avaop: [{
+            loadedImages: new Map(),
+            addImage: (id: string, data: any) => {
+              if (!(window as any).gameEngine.par.Avaop[0].loadedImages) {
+                (window as any).gameEngine.par.Avaop[0].loadedImages = new Map();
+              }
+              (window as any).gameEngine.par.Avaop[0].loadedImages.set(id, data);
+            }
+          }]
+        };
+
+        // Initialize the engine
+        (window as any).gameEngine.doInit();
+        console.log('Game engine initialized with doInit()');
+          
+        // Start animation loop
+        if (!(window as any).animationStarted) {
+          (window as any).animationStarted = true;
+          (function animate() {
+            time.update();
+            if ((window as any).gameEngine) {
+              (window as any).gameEngine.update();
+            }
+            requestAnimationFrame(animate);
+          })();
+          console.log('Animation loop started');
+        }
+
         setIsEngineLoaded(true);
-        console.log('Game engine initialized successfully');
-      } else {
-        throw new Error('Game engine not available after initialization');
+        toast({
+          title: 'Game initialized successfully',
+          status: 'success',
+          duration: 3000,
+        });
+
+      } catch (error) {
+        console.error('Game initialization failed:', error);
+        setIsSocketConnected(false);
+        setIsEngineLoaded(false);
+        toast({
+          title: 'Initialization Error',
+          description: error instanceof Error ? error.message : 'Unknown error occurred',
+          status: 'error',
+          duration: 5000,
+        });
+        // Clean up on error
+        await leaveGame();
       }
 
     } catch (error) {
-      console.error('Error initializing game:', error);
-      const errorMessage = error instanceof Error ? error.message : 'Unknown error occurred';
+      console.error('Game initialization failed:', error);
+      setIsSocketConnected(false);
+      setIsEngineLoaded(false);
       toast({
         title: 'Initialization Error',
-        description: errorMessage,
+        description: error instanceof Error ? error.message : 'Unknown error occurred',
         status: 'error',
         duration: 5000,
       });
