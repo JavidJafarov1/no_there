@@ -58,6 +58,9 @@ export class GameEngine {
 
     const canvas = document.createElement('canvas');
     canvas.id = 'canvas';
+    canvas.style.width = '100%';
+    canvas.style.height = '100%';
+    canvas.style.objectFit = 'contain';
     container.appendChild(canvas);
   }
 
