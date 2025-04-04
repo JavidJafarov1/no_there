@@ -39,7 +39,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const { disconnect } = useDisconnect();
 
   // Check if user is authenticated with either method
-  const isAuthenticated = Boolean(user || address);
+  const isAuthenticated = Boolean(address);
 
   // Listen for Firebase auth state changes
   useEffect(() => {

@@ -1,4 +1,3 @@
-
 //=============================== TIME ========================
 class Time{
   constructor() {
@@ -176,6 +175,7 @@ class OP{
     this.error = null;
     this.name = name;
     this.time = time;
+    this.path = name; // Initialize path with name
     this.cook = 0;
     this.prevCook = 0;
     this.initialized = false;
@@ -226,15 +226,15 @@ class OP{
   }
 
   initialize(){
-    console.log('-->INITIALIZE: ', this.path);
-    if(!this.initialized){
-      console.log('INIT CONNECTED: ', this.path);
+    if (this.initialized) {
+      return; // Prevent multiple initializations
+    }
+    console.log('-->INITIALIZE: ', this.name || this.path);
       this.initConnected();
       this.initFamily();
-      console.log('DO INIT: ', this.path);
+    console.log('DO INIT: ', this.name || this.path);
       this.doInit();
       this.initialized = true;
-    }
   }
 
   updateOrderedInputs(){
@@ -251,8 +251,18 @@ class OP{
   }
 
   initConnected(){
-    for (let j = 0; j< this.dependencies.length; j++) {this.dependencies[j].initialize();}
-    for (let j = 0; j< this.inputs.length; j++) {this.inputs[j].initialize();}
+    // Initialize dependencies first
+    for (let j = 0; j < this.dependencies.length; j++) {
+      if (!this.dependencies[j].initialized) {
+        this.dependencies[j].initialize();
+      }
+    }
+    // Then initialize inputs
+    for (let j = 0; j < this.inputs.length; j++) {
+      if (!this.inputs[j].initialized) {
+        this.inputs[j].initialize();
+      }
+    }
   }
 
   initFamily(){
@@ -2191,16 +2201,20 @@ void main()
     // Create a buffer for the quad vertices
     const quadVertices = new Float32Array([-1, -1,1, -1,-1, 1,-1, 1,1, -1,1, 1]);
 
+
     this.updateSpriteBuffer();
 
     this.buffer = this.gl.createBuffer();
     this.gl.bindBuffer(gl.ARRAY_BUFFER, this.buffer);
     this.gl.bufferData(gl.ARRAY_BUFFER, quadVertices, gl.STATIC_DRAW);
 
-    // Create instance data buffer
-    this.instanceBuffer = this.gl.createBuffer();
-    this.gl.bindBuffer(gl.ARRAY_BUFFER, this.instanceBuffer);
-    this.gl.bufferData(gl.ARRAY_BUFFER, this.spriteData, gl.DYNAMIC_DRAW);
+    if (!this.instanceBuffer) {
+        this.instanceBuffer = gl.createBuffer();
+    }
+    gl.bindBuffer(gl.ARRAY_BUFFER, this.instanceBuffer);
+    gl.bufferData(gl.ARRAY_BUFFER, this.spriteData, gl.DYNAMIC_DRAW);
+
+
 
     // Create and link program
     this.program = gl.createProgram();
