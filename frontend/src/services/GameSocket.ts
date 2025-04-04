@@ -8,7 +8,7 @@ interface GameSocketConfig {
 }
 
 export class GameSocket {
-  private socket: Socket | null = null;
+  public socket: Socket | null = null;
   private config: GameSocketConfig;
   private reconnectAttempts = 0;
   private maxReconnectAttempts = 10;
@@ -182,6 +182,10 @@ export class GameSocket {
   public isAuthenticated(): boolean {
     // Always return true since we're removing authentication
     return true;
+  }
+
+  public getSocketId(): string | undefined {
+    return this.socket?.id;
   }
 
   emit(event: string, data: any): void {

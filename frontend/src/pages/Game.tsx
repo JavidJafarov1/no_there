@@ -344,8 +344,28 @@ const Game: React.FC = () => {
           },
         });
 
-        socket.connect();
+        // Wait for socket connection before proceeding
+        await new Promise<void>((resolve, reject) => {
+          const timeout = setTimeout(() => {
+            reject(new Error('Socket connection timeout'));
+          }, 10000); // 10 second timeout
+
+          socket.connect();
+          
+          const checkConnection = () => {
+            if (socket.isConnected()) {
+              clearTimeout(timeout);
+              resolve();
+            } else {
+              setTimeout(checkConnection, 100);
+            }
+          };
+          
+          checkConnection();
+        });
+
         setGameSocket(socket);
+        console.log('Socket connection established and stored');
 
         // Now that we know the script is loaded and executed, initialize the engine
         console.log('Initializing game engine...');
@@ -385,6 +405,102 @@ const Game: React.FC = () => {
               (window as any).gameEngine.par.Avaop[0].loadedImages.set(id, data);
             }
           }]
+        };
+
+        // Add player movement methods
+        (window as any).gameEngine.getPlayerPosition = () => {
+          try {
+            const playerId = socket.getSocketId();
+            if (!playerId) {
+              console.warn('No player ID available - socket not connected');
+              return { x: 500, y: 500 }; // Return default position
+            }
+            
+            const players = (window as any).gameEngine.par.Multiplayerop[0].players;
+            if (!players) {
+              console.warn('Players object not initialized');
+              return { x: 500, y: 500 }; // Return default position
+            }
+
+            const player = players[playerId];
+            if (!player) {
+              console.warn('Player not found, initializing new player');
+              // Initialize new player
+              players[playerId] = {
+                x: 500,
+                y: 500,
+                size: 50,
+                r: Math.random(),
+                g: Math.random(),
+                b: Math.random()
+              };
+              return { x: 500, y: 500 };
+            }
+            
+            return {
+              x: player.x || 500,
+              y: player.y || 500
+            };
+          } catch (error) {
+            console.error('Error getting player position:', error);
+            return { x: 500, y: 500 }; // Return default position on error
+          }
+        };
+
+        (window as any).gameEngine.updatePlayerPosition = (x: number, y: number) => {
+          try {
+            const playerId = socket.getSocketId();
+            if (!playerId) {
+              console.warn('No player ID available - socket not connected');
+              return;
+            }
+            
+            const players = (window as any).gameEngine.par.Multiplayerop[0].players;
+            if (!players) {
+              console.warn('Players object not initialized');
+              return;
+            }
+
+            // Initialize player if not exists
+            if (!players[playerId]) {
+              players[playerId] = {
+                x: x,
+                y: y,
+                size: 50,
+                r: Math.random(),
+                g: Math.random(),
+                b: Math.random()
+              };
+            } else {
+              players[playerId].x = x;
+              players[playerId].y = y;
+            }
+            
+            // Update the sprite position
+            const sprite = (window as any).gameEngine.sprites?.find((s: any) => s.id === playerId);
+            if (sprite) {
+              sprite.x = x / 1000;
+              sprite.y = y / 1000;
+            } else {
+              // Create new sprite if not exists
+              (window as any).gameEngine.sprites = (window as any).gameEngine.sprites || [];
+              (window as any).gameEngine.sprites.push({
+                id: playerId,
+                x: x / 1000,
+                y: y / 1000,
+                size: 0.05,
+                startU: 0,
+                startV: 0,
+                endU: 1,
+                endV: 1,
+                r: players[playerId].r,
+                g: players[playerId].g,
+                b: players[playerId].b
+              });
+            }
+          } catch (error) {
+            console.error('Error updating player position:', error);
+          }
         };
 
         // Initialize the engine
