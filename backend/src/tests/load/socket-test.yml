@@ -1,0 +1,50 @@
+config:
+  target: "http://localhost:3000"
+  phases:
+    - duration: 60
+      arrivalRate: 5
+      rampTo: 50
+      name: "Warm up phase"
+    - duration: 120
+      arrivalRate: 50
+      rampTo: 100
+      name: "Ramp up load"
+    - duration: 180
+      arrivalRate: 100
+      name: "Sustained load"
+  plugins:
+    socket-io:
+      transports: ["websocket"]
+  processor: "./socket-processor.js"
+
+scenarios:
+  - name: "Connect and move around"
+    engine: "socket.io"
+    flow:
+      # Connect to the Socket.IO server
+      - connect:
+          headers:
+            User-Agent: "Artillery Load Test"
+
+      # Wait for the connection to be established
+      - think: 1
+
+      # Authenticate with a random wallet
+      - emit:
+          channel: "authenticate"
+          data: "{{ generateWallet }}"
+
+      # Wait for authentication response
+      - think: 2
+
+      # Start moving around randomly
+      - loop:
+          - function: "generateMovement"
+          - emit:
+              channel: "userMovement"
+              data: "{{ movement }}"
+          - think: 1
+        count: 30
+
+      # Disconnect after we're done
+      - think: 2

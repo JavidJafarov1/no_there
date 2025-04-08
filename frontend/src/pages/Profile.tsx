@@ -8,13 +8,16 @@ import {
   Divider,
   useColorModeValue,
   Spinner,
-} from '@chakra-ui/react';
-import { useAuth } from '../contexts/AuthContext';
+  Flex,
+  Button,
+} from "@chakra-ui/react";
+import { useAuth } from "../contexts/AuthContext";
+import { Link } from "react-router-dom";
 
 const Profile = () => {
   const { user, walletAddress, isLoading } = useAuth();
-  const bgColor = useColorModeValue('white', 'gray.800');
-  const borderColor = useColorModeValue('gray.200', 'gray.700');
+  const bgColor = useColorModeValue("white", "gray.800");
+  const borderColor = useColorModeValue("gray.200", "gray.700");
 
   if (isLoading) {
     return (
@@ -46,15 +49,15 @@ const Profile = () => {
     >
       <VStack spacing={6} align="stretch">
         <Box textAlign="center">
-          <Avatar
-            size="2xl"
-            name={user?.email || walletAddress || 'User'}
-          />
+          <Avatar size="2xl" name={user?.email || walletAddress || "User"} />
           <Heading size="lg" mt={4}>
-            {user?.displayName || (walletAddress ? `${walletAddress.slice(0, 6)}...${walletAddress.slice(-4)}` : 'User')}
+            {user?.displayName ||
+              (walletAddress
+                ? `${walletAddress.slice(0, 6)}...${walletAddress.slice(-4)}`
+                : "User")}
           </Heading>
           <Badge colorScheme="blue" mt={2}>
-            {walletAddress ? 'Wallet Connected' : 'Social Login'}
+            {walletAddress ? "Wallet Connected" : "Social Login"}
           </Badge>
         </Box>
 
@@ -96,6 +99,23 @@ const Profile = () => {
 
         <Box>
           <Heading size="md" mb={4}>
+            Social Accounts
+          </Heading>
+          <Flex justifyContent="center" my={3}>
+            <Button as={Link} to="/connect-social" colorScheme="blue">
+              Connect Social Accounts
+            </Button>
+          </Flex>
+          <Text fontSize="sm" textAlign="center" color="gray.500" mt={2}>
+            Connect your social accounts to verify your identity on the
+            platform.
+          </Text>
+        </Box>
+
+        <Divider />
+
+        <Box>
+          <Heading size="md" mb={4}>
             Game Statistics
           </Heading>
           <VStack align="start" spacing={2}>
@@ -118,4 +138,4 @@ const Profile = () => {
   );
 };
 
-export default Profile; 
+export default Profile;

@@ -1,0 +1,57 @@
+config:
+  target: "http://localhost:3000"
+  phases:
+    - duration: 60
+      arrivalRate: 20
+      rampTo: 200
+      name: "Warm up phase"
+    - duration: 120
+      arrivalRate: 200
+      rampTo: 500
+      name: "Ramp up load"
+    - duration: 180
+      arrivalRate: 500
+      name: "Sustained heavy load"
+  plugins:
+    socket-io:
+      transports: ["websocket"]
+  processor: "./socket-processor.js"
+  # Add HTTP headers to all requests
+  defaults:
+    headers:
+      User-Agent: "Artillery Load Test"
+      Connection: "keep-alive"
+  # Don't wait for graceful completion
+  gracefulStop: 2
+
+scenarios:
+  - name: "Connect and move around with high frequency"
+    engine: "socket.io"
+    flow:
+      # Connect to the Socket.IO server
+      - connect:
+          headers:
+            User-Agent: "Artillery Heavy Load Test"
+
+      # Wait for the connection to be established
+      - think: 0.5
+
+      # Authenticate with a random wallet
+      - emit:
+          channel: "authenticate"
+          data: "{{ generateWallet }}"
+
+      # Wait for authentication response
+      - think: 1
+
+      # Start moving around randomly at high frequency
+      - loop:
+          - function: "generateMovement"
+          - emit:
+              channel: "userMovement"
+              data: "{{ movement }}"
+          - think: 0.2 # High frequency movement (5 per second)
+        count: 50
+
+      # Disconnect after we're done
+      - think: 1

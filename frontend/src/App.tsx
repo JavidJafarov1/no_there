@@ -1,14 +1,15 @@
-import { ChakraProvider } from '@chakra-ui/react';
-import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
-import { WagmiConfig } from 'wagmi';
-import { wagmiConfig } from './config/web3';
-import { AuthProvider } from './contexts/AuthContext';
-import Layout from './components/Layout';
-import Home from './pages/Home';
-import Game from './pages/Game';
-import Profile from './pages/Profile';
-import ProtectedRoute from './components/ProtectedRoute';
-import Login from './pages/Login';
+import { ChakraProvider } from "@chakra-ui/react";
+import { BrowserRouter as Router, Routes, Route } from "react-router-dom";
+import { WagmiConfig } from "wagmi";
+import { wagmiConfig } from "./config/web3";
+import { AuthProvider } from "./contexts/AuthContext";
+import Layout from "./components/Layout";
+import Home from "./pages/Home";
+import Game from "./pages/Game";
+import Profile from "./pages/Profile";
+import ConnectSocial from "./pages/ConnectSocial";
+import ProtectedRoute from "./components/ProtectedRoute";
+import Login from "./pages/Login";
 
 function App() {
   return (
@@ -36,6 +37,14 @@ function App() {
                     </ProtectedRoute>
                   }
                 />
+                <Route
+                  path="/connect-social"
+                  element={
+                    <ProtectedRoute>
+                      <ConnectSocial />
+                    </ProtectedRoute>
+                  }
+                />
               </Routes>
             </Layout>
           </Router>
@@ -45,4 +54,4 @@ function App() {
   );
 }
 
-export default App; 
+export default App;
