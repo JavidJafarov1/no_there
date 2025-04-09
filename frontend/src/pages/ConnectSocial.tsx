@@ -13,7 +13,7 @@ import {
 import { FaTwitter } from "react-icons/fa";
 import { SiTiktok } from "react-icons/si";
 import { useNavigate } from "react-router-dom";
-import { socialAccountApi, SocialAccount } from "../services/api";
+import { socialAccountApi } from "../services/api";
 import { useAuth } from "../contexts/AuthContext";
 
 /**

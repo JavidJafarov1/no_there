@@ -330,7 +330,7 @@ class PrizeService {
     try {
       // Update prize status in database
       await pgPool.query(
-        `UPDATE prizes SET status = 'expired', updated_at = NOW() WHERE id = ANY($1)`,
+        `UPDATE prizes SET status = 'expired' WHERE id = ANY($1)`,
         [expiredPrizeIds]
       );
 

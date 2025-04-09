@@ -6,135 +6,195 @@ import {
   Avatar,
   Badge,
   Divider,
-  useColorModeValue,
   Spinner,
   Flex,
   Button,
+  Container,
+  SimpleGrid,
+  Icon,
+  HStack,
 } from "@chakra-ui/react";
 import { useAuth } from "../contexts/AuthContext";
 import { Link } from "react-router-dom";
+import { FaUser, FaWallet, FaGamepad, FaTwitter } from "react-icons/fa";
 
+/**
+ * User profile page
+ */
 const Profile = () => {
   const { user, walletAddress, isLoading } = useAuth();
-  const bgColor = useColorModeValue("white", "gray.800");
-  const borderColor = useColorModeValue("gray.200", "gray.700");
 
   if (isLoading) {
     return (
-      <Box textAlign="center" p={10}>
-        <Spinner size="xl" />
-      </Box>
+      <Container maxW="container.sm" py={8} centerContent>
+        <Box textAlign="center" p={10}>
+          <Spinner size="xl" />
+        </Box>
+      </Container>
     );
   }
 
   // This shouldn't happen with ProtectedRoute, but just in case
   if (!user && !walletAddress) {
     return (
-      <Box p={4}>
-        <Text>Please connect your wallet or sign in to view your profile</Text>
-      </Box>
+      <Container maxW="container.sm" py={8}>
+        <Box
+          w="100%"
+          p={6}
+          borderRadius="md"
+          bg="white"
+          boxShadow="md"
+          textAlign="center"
+        >
+          <Text>
+            Please connect your wallet or sign in to view your profile
+          </Text>
+          <Button
+            as={Link}
+            to="/login"
+            mt={4}
+            bg="black"
+            color="white"
+            _hover={{ bg: "gray.800" }}
+          >
+            Go to Login
+          </Button>
+        </Box>
+      </Container>
     );
   }
 
   return (
-    <Box
-      maxW="container.md"
-      mx="auto"
-      p={6}
-      bg={bgColor}
-      rounded="xl"
-      border="1px"
-      borderColor={borderColor}
-      shadow="lg"
-    >
-      <VStack spacing={6} align="stretch">
-        <Box textAlign="center">
-          <Avatar size="2xl" name={user?.email || walletAddress || "User"} />
-          <Heading size="lg" mt={4}>
-            {user?.displayName ||
-              (walletAddress
-                ? `${walletAddress.slice(0, 6)}...${walletAddress.slice(-4)}`
-                : "User")}
-          </Heading>
-          <Badge colorScheme="blue" mt={2}>
-            {walletAddress ? "Wallet Connected" : "Social Login"}
-          </Badge>
-        </Box>
+    <Container maxW="container.sm" py={8}>
+      <Box w="100%" p={6} borderRadius="md" bg="white" boxShadow="md">
+        <VStack spacing={8} align="stretch">
+          <Box textAlign="center">
+            <Avatar
+              size="2xl"
+              name={user?.email || walletAddress || "User"}
+              mb={4}
+              bg="blue.500"
+            />
+            <Heading size="lg" fontWeight="bold">
+              {user?.displayName ||
+                (walletAddress
+                  ? `${walletAddress.slice(0, 6)}...${walletAddress.slice(-4)}`
+                  : "User")}
+            </Heading>
+            <Badge colorScheme="blue" mt={2} px={2} py={1} borderRadius="md">
+              {walletAddress ? "Wallet Connected" : "Social Login"}
+            </Badge>
+          </Box>
 
-        <Divider />
+          <Divider />
 
-        <Box>
-          <Heading size="md" mb={4}>
-            Account Details
-          </Heading>
-          <VStack align="start" spacing={2}>
-            {user?.email && (
-              <Box>
-                <Text fontWeight="bold">Email:</Text>
-                <Text>{user.email}</Text>
-              </Box>
-            )}
-            {walletAddress && (
-              <Box>
-                <Text fontWeight="bold">Wallet Address:</Text>
-                <Text fontFamily="monospace">{walletAddress}</Text>
-              </Box>
-            )}
-            {user?.uid && (
-              <Box>
-                <Text fontWeight="bold">User ID:</Text>
-                <Text>{user.uid}</Text>
-              </Box>
-            )}
-            {user?.providerData?.[0]?.providerId && (
-              <Box>
-                <Text fontWeight="bold">Login Provider:</Text>
-                <Text>{user.providerData[0].providerId}</Text>
-              </Box>
-            )}
-          </VStack>
-        </Box>
+          <Box>
+            <HStack spacing={2} mb={4}>
+              <Icon as={FaUser} color="blue.500" />
+              <Heading size="md">Account Details</Heading>
+            </HStack>
+            <SimpleGrid columns={{ base: 1 }} spacing={4}>
+              {user?.email && (
+                <Box p={3} borderRadius="md" bg="gray.50">
+                  <Text fontWeight="bold" color="gray.700">
+                    Email:
+                  </Text>
+                  <Text>{user.email}</Text>
+                </Box>
+              )}
+              {walletAddress && (
+                <Box p={3} borderRadius="md" bg="gray.50">
+                  <Text fontWeight="bold" color="gray.700">
+                    Wallet Address:
+                  </Text>
+                  <Text fontSize="sm" fontFamily="monospace">
+                    {walletAddress}
+                  </Text>
+                </Box>
+              )}
+              {user?.uid && (
+                <Box p={3} borderRadius="md" bg="gray.50">
+                  <Text fontWeight="bold" color="gray.700">
+                    User ID:
+                  </Text>
+                  <Text fontSize="sm">{user.uid}</Text>
+                </Box>
+              )}
+              {user?.providerData?.[0]?.providerId && (
+                <Box p={3} borderRadius="md" bg="gray.50">
+                  <Text fontWeight="bold" color="gray.700">
+                    Login Provider:
+                  </Text>
+                  <Text>{user.providerData[0].providerId}</Text>
+                </Box>
+              )}
+            </SimpleGrid>
+          </Box>
 
-        <Divider />
+          <Divider />
 
-        <Box>
-          <Heading size="md" mb={4}>
-            Social Accounts
-          </Heading>
-          <Flex justifyContent="center" my={3}>
-            <Button as={Link} to="/connect-social" colorScheme="blue">
-              Connect Social Accounts
-            </Button>
-          </Flex>
-          <Text fontSize="sm" textAlign="center" color="gray.500" mt={2}>
-            Connect your social accounts to verify your identity on the
-            platform.
-          </Text>
-        </Box>
-
-        <Divider />
-
-        <Box>
-          <Heading size="md" mb={4}>
-            Game Statistics
-          </Heading>
-          <VStack align="start" spacing={2}>
-            <Box>
-              <Text fontWeight="bold">Games Played:</Text>
-              <Text>0</Text>
+          <Box>
+            <HStack spacing={2} mb={4}>
+              <Icon as={FaTwitter} color="blue.500" />
+              <Heading size="md">Social Accounts</Heading>
+            </HStack>
+            <Box p={5} borderRadius="md" bg="gray.50" textAlign="center">
+              <Text mb={4} color="gray.600">
+                Connect your social accounts to verify your identity on the
+                platform.
+              </Text>
+              <Button
+                as={Link}
+                to="/connect-social"
+                bg="black"
+                color="white"
+                height="50px"
+                fontWeight="medium"
+                w="100%"
+                _hover={{ bg: "gray.800" }}
+              >
+                Connect Social Accounts
+              </Button>
             </Box>
-            <Box>
-              <Text fontWeight="bold">Wins:</Text>
-              <Text>0</Text>
-            </Box>
-            <Box>
-              <Text fontWeight="bold">Losses:</Text>
-              <Text>0</Text>
-            </Box>
-          </VStack>
-        </Box>
-      </VStack>
-    </Box>
+          </Box>
+
+          <Divider />
+
+          <Box>
+            <HStack spacing={2} mb={4}>
+              <Icon as={FaGamepad} color="blue.500" />
+              <Heading size="md">Game Statistics</Heading>
+            </HStack>
+            <SimpleGrid columns={3} spacing={4}>
+              <Box p={4} borderRadius="md" bg="gray.50" textAlign="center">
+                <Text fontWeight="bold" color="gray.700">
+                  Games Played
+                </Text>
+                <Heading size="xl" mt={2} color="blue.500">
+                  0
+                </Heading>
+              </Box>
+              <Box p={4} borderRadius="md" bg="gray.50" textAlign="center">
+                <Text fontWeight="bold" color="gray.700">
+                  Wins
+                </Text>
+                <Heading size="xl" mt={2} color="green.500">
+                  0
+                </Heading>
+              </Box>
+              <Box p={4} borderRadius="md" bg="gray.50" textAlign="center">
+                <Text fontWeight="bold" color="gray.700">
+                  Losses
+                </Text>
+                <Heading size="xl" mt={2} color="red.500">
+                  0
+                </Heading>
+              </Box>
+            </SimpleGrid>
+          </Box>
+        </VStack>
+      </Box>
+    </Container>
   );
 };
 

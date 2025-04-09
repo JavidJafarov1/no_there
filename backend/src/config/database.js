@@ -3,19 +3,22 @@ const Redis = require("redis");
 
 // PostgreSQL connection pool with optimized settings for high concurrency
 const pgPool = new Pool({
-  host: process.env.POSTGRES_HOST,
-  port: process.env.POSTGRES_PORT,
-  database: process.env.POSTGRES_DB,
-  user: process.env.POSTGRES_USER,
-  password: process.env.POSTGRES_PASSWORD,
+  host: process.env.POSTGRES_HOST || "localhost",
+  port: process.env.POSTGRES_PORT || 5432,
+  database: process.env.POSTGRES_DB || "postgres",
+  user: process.env.POSTGRES_USER || "postgres",
+  password: process.env.POSTGRES_PASSWORD || "postgres",
   max: 20, // Maximum number of clients in the pool
   idleTimeoutMillis: 30000, // How long a client is allowed to remain idle before being closed
   connectionTimeoutMillis: 2000, // How long to wait for a connection to become available
 });
 
 // Redis client with optimized settings
+const redisHost = process.env.REDIS_HOST || "localhost";
+const redisPort = process.env.REDIS_PORT || 6379;
+
 const redisClient = Redis.createClient({
-  url: `redis://${process.env.REDIS_HOST}:${process.env.REDIS_PORT}`,
+  url: `redis://${redisHost}:${redisPort}`,
   socket: {
     reconnectStrategy: (retries) => Math.min(retries * 50, 2000), // Exponential backoff with max of 2s
   },
@@ -23,7 +26,7 @@ const redisClient = Redis.createClient({
 
 // Redis publisher client for pub/sub pattern (used for horizontal scaling)
 const redisPublisher = Redis.createClient({
-  url: `redis://${process.env.REDIS_HOST}:${process.env.REDIS_PORT}`,
+  url: `redis://${redisHost}:${redisPort}`,
   socket: {
     reconnectStrategy: (retries) => Math.min(retries * 50, 2000),
   },
@@ -31,7 +34,7 @@ const redisPublisher = Redis.createClient({
 
 // Redis subscriber client for pub/sub pattern
 const redisSubscriber = Redis.createClient({
-  url: `redis://${process.env.REDIS_HOST}:${process.env.REDIS_PORT}`,
+  url: `redis://${redisHost}:${redisPort}`,
   socket: {
     reconnectStrategy: (retries) => Math.min(retries * 50, 2000),
   },
@@ -68,7 +71,16 @@ const setupDatabase = async () => {
     });
 
     // Initialize database tables
-    await initializeTables();
+    try {
+      await initializeTables();
+    } catch (tableError) {
+      console.error(
+        "Warning: Error initializing tables, but continuing:",
+        tableError.message
+      );
+      // Don't throw here, allow the app to start even if tables can't be created
+      // This is useful for development environments
+    }
   } catch (error) {
     console.error("Database connection error:", error);
     throw error;
