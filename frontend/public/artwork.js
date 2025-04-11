@@ -1,5 +1,5 @@
 //=============================== TIME ========================
-class Time {
+class Time{
   constructor() {
     this.frame = 0;
     this.absTime = performance.now();
@@ -7,186 +7,175 @@ class Time {
     this.seconds = 0;
     this.deltas = 0;
     this.rate = 60;
+
   }
 
-  update() {
+
+   update(){
     this.frame++;
-    this.mseconds += performance.now() - this.absTime;
-    this.deltas = (performance.now() - this.absTime) * 0.001;
-    this.seconds = this.mseconds * 0.001;
-    this.absTime = performance.now();
-  }
+    this.mseconds += performance.now()-this.absTime;
+    this.deltas = (performance.now()-this.absTime)*0.001;
+    this.seconds = this.mseconds*0.001;
+    this.absTime = performance.now()
+   }
+
 }
 
 class Connector {
-  constructor(owner, index, isInput, description) {
-    this.owner = owner;
-    this.index = index;
-    this.isInput = isInput;
-    this.connections = [];
-    this.description = description;
-    this.inOP = null;
-    this.outOP = null;
-    this.multiInput = false;
-  }
-
-  // Public methods
-  connect(target) {
-    if (!target) {
-      console.warn("Target cannot be null or undefined");
-      return;
+    constructor(owner, index, isInput, description) {
+        this.owner = owner;
+        this.index = index;
+        this.isInput = isInput;
+        this.connections = [];
+        this.description = description;
+        this.inOP = null;
+        this.outOP = null;
+        this.multiInput = false;
     }
 
-    let input;
-    let output;
+    // Public methods
+    connect(target) {
+      if (!target) {console.warn('Target cannot be null or undefined'); return;}
+      
+      let input;
+      let output;
 
-    if (this.isInput) {
-      if (target.isInput === true) {
-        console.warn("Cannot connect input to input");
-        return;
+      if (this.isInput){
+        if(target.isInput === true) {console.warn('Cannot connect input to input'); return;}
+        input = this;
+        output = target;
       }
-      input = this;
-      output = target;
-    } else {
-      if (target.isInput === false) {
-        console.warn("Cannot connect output to output");
-        return;
+      else{
+        if(target.isInput === false) {console.warn('Cannot connect output to output'); return;}
+        input = target;
+        output = this;
       }
-      input = target;
-      output = this;
-    }
 
-    if (!output.owner) {
-      //OUTPUT IS OP
-      if (output.outputConnectors.length > 0)
-        output = output.outputConnectors[0];
-      else {
-        console.warn("OPs has no outputs");
-        return;
+      if (!output.owner) { //OUTPUT IS OP
+        if (output.outputConnectors.length>0) output = output.outputConnectors[0];
+        else {console.warn('OPs has no outputs'); return;}
       }
-    }
 
-    if (!input.owner) {
-      //INPUT IS OP
-      if (input.inputConnectors.length > 0) {
-        if (!input.isMultiInputs)
-          input = input.inputConnectors[input.inputConnectors.length - 1];
-        //UNORDERED INPUT OP
-        else input = input.inputConnectors[0];
-      } else {
-        console.warn("OPs has no outputs");
-        return;
+      if (!input.owner) { //INPUT IS OP
+        if (input.inputConnectors.length>0) {
+          if (!input.isMultiInputs) input = input.inputConnectors[input.inputConnectors.length-1];//UNORDERED INPUT OP
+          else input = input.inputConnectors[0];
+        }
+        else {console.warn('OPs has no outputs'); return;}
       }
-    }
 
-    if (input.inOP) input = input.inOP.inputConnectors[0]; //inOP OF COMP
-    if (output.outOP) output = output.outOP.outputConnectors[0]; //outOP OF COMP
+      if(input.inOP) input = input.inOP.inputConnectors[0]; //inOP OF COMP 
+      if(output.outOP) output = output.outOP.outputConnectors[0]; //outOP OF COMP
+      
+      if (input.family != output.family){console.warn('OPs must be same family'); return;}
+      if (input.owner == output.owner){console.warn('Can not connect to the same OP'); return;}
+      
+      input.connections = [output];
 
-    if (input.family != output.family) {
-      console.warn("OPs must be same family");
-      return;
-    }
-    if (input.owner == output.owner) {
-      console.warn("Can not connect to the same OP");
-      return;
-    }
-
-    input.connections = [output];
-
-    if (!input.owner.isMultiInputs) {
-      //UNORDERED
-      if (input.index == input.owner.inputConnectors.length - 1) {
-        //CONNECT TO LAST input
-        this.owner.inputConnectors.push(
-          new Connector(
-            this.owner,
-            this.index + 1,
-            true,
-            `Source${this.index + 1}`
-          )
-        );
+      if(!input.owner.isMultiInputs){ //UNORDERED 
+        if(input.index == input.owner.inputConnectors.length-1){ //CONNECT TO LAST input
+          this.owner.inputConnectors.push(new Connector(this.owner,this.index+1,true,`Source${this.index+1}`))
+        }
       }
-    }
-    input.owner.updateOrderedInputs();
-    output.connections.push(input);
-  }
+      input.owner.updateOrderedInputs();
+      output.connections.push(input);
 
-  disconnect() {}
+    }
+
+    disconnect() {
+        
+    }
 }
 
-class ConnectorUI {
-  constructor(connector) {
+
+class ConnectorUI{
+  constructor(connector){
     this.connector = connector;
     this.owner = this.connector.owner;
-    this.ui = document.createElement("div");
+    this.ui = document.createElement('div');
     this.isInput = this.connector.isInput;
     this.index = this.connector.index;
     this.isUnordered = false;
 
-    let directionCssName = "output";
-    if (this.isInput) directionCssName = "input";
 
-    this.ui.classList.add("connector", directionCssName, this.owner.family);
+    let directionCssName = 'output';
+    if(this.isInput)directionCssName = 'input';
+    
+    this.ui.classList.add('connector', directionCssName , this.owner.family);
     this.owner.opUI.op.appendChild(this.ui);
-
+    
     let numConnectors = this.owner.inputConnectors.length;
     if (!this.isInput) numConnectors = this.owner.outputConnectors.length;
     const index = this.connector.index;
-    this.ui.style.top = `${
-      (index / numConnectors + 0.5 / numConnectors) * 50 + 25
-    }%`;
-
-    this.ui.addEventListener("mousedown", (event) => {
-      viewport.onMouseDownOpConnector(event, this);
-    });
-    this.ui.addEventListener("mouseup", (event) => {
-      viewport.onMouseUpOpConnector(event, this);
-    });
-    this.ui.addEventListener("mouseover", (event) => {
-      viewport.onMouseOverOpConnector(event, this);
-    });
-    this.ui.addEventListener("mouseout", (event) => {
-      viewport.onMouseOutOpConnector(event, this);
-    });
+    this.ui.style.top = `${(index/numConnectors+0.5/numConnectors)*50+25}%`;
+    
+    this.ui.addEventListener('mousedown', (event) => {viewport.onMouseDownOpConnector(event, this);});
+    this.ui.addEventListener('mouseup',   (event) => {viewport.onMouseUpOpConnector(event, this);});
+    this.ui.addEventListener('mouseover', (event) => {viewport.onMouseOverOpConnector(event, this);});
+    this.ui.addEventListener('mouseout',  (event) => {viewport.onMouseOutOpConnector(event, this);});
+    
   }
 }
 
-class UnorderedConnectorUI {
-  constructor(owner) {
+class UnorderedConnectorUI{
+  constructor(owner){
     this.owner = owner;
-    this.ui = document.createElement("div");
+    this.ui = document.createElement('div');
     this.isInput = true;
     this.index = 0;
     this.isUnordered = true;
-    this.ui.classList.add("connector", "input", this.owner.family);
+    this.ui.classList.add('connector', 'input' , this.owner.family);
     this.owner.opUI.op.appendChild(this.ui);
-
+    
     let numConnectors = this.owner.inputConnectors.length;
     this.ui.style.top = `50%`;
-    this.ui.style.height = `${numConnectors * 4 + 8}px`;
+    this.ui.style.height = `${numConnectors*4+8}px`;
+    
+    this.ui.addEventListener('mousedown', (event) => {viewport.onMouseDownOpConnector(event, this);});
+    this.ui.addEventListener('mouseup',   (event) => {viewport.onMouseUpOpConnector(event, this);});
+    this.ui.addEventListener('mouseover', (event) => {viewport.onMouseOverOpConnector(event, this);});
+    this.ui.addEventListener('mouseout',  (event) => {viewport.onMouseOutOpConnector(event, this);});
 
-    this.ui.addEventListener("mousedown", (event) => {
-      viewport.onMouseDownOpConnector(event, this);
-    });
-    this.ui.addEventListener("mouseup", (event) => {
-      viewport.onMouseUpOpConnector(event, this);
-    });
-    this.ui.addEventListener("mouseover", (event) => {
-      viewport.onMouseOverOpConnector(event, this);
-    });
-    this.ui.addEventListener("mouseout", (event) => {
-      viewport.onMouseOutOpConnector(event, this);
-    });
   }
 }
 
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 //=============================== OP ========================
-class OP {
+class OP{
   constructor(name, time, gl, isMultiInputs, defaultInputs, defaultOutputs) {
     this.gl = gl;
     this.error = null;
     this.name = name;
     this.time = time;
+    this.path = name; // Initialize path with name
     this.cook = 0;
     this.prevCook = 0;
     this.initialized = false;
@@ -196,11 +185,11 @@ class OP {
     this.prevNodeX;
     this.prevNodeY;
     //UI
-    this.lastUpdate;
+    this.lastUpdate
     this.nodeX = 0;
     this.nodeY = 0;
-    this.opUI = {};
-    this.opUIbars = {};
+    this.opUI ={};
+    this.opUIbars ={};
 
     this.par = {};
     this.family;
@@ -211,7 +200,7 @@ class OP {
     this.bypass = false;
 
     this.defaultInputs = defaultInputs;
-    this.defaultOutputs = defaultOutputs;
+    this.defaultOutputs = defaultOutputs; 
     this.isMultiInputs = isMultiInputs;
     this.inputConnectors = [];
     this.outputConnectors = [];
@@ -219,186 +208,191 @@ class OP {
   }
 
   //INITIAL OP STATE
-  initConnectors() {
+  initConnectors(){
     this.inputs = [];
-
-    if (!this.isMultiInputs)
-      this.inputConnectors.push(new Connector(this, 0, true, `Source0`));
-    else {
-      for (let i = 0; i < this.defaultInputs.length; i++) {
-        this.inputConnectors.push(
-          new Connector(this, i, true, this.defaultInputs[i])
-        );
+    
+    if(!this.isMultiInputs)this.inputConnectors.push(new Connector(this,0,true,`Source0`));
+    else
+      {
+        for(let i=0; i< this.defaultInputs.length; i++){
+          this.inputConnectors.push(new Connector(this,i,true,this.defaultInputs[i]));
+        }
       }
-    }
 
     this.outputs = [];
-    for (let i = 0; i < this.defaultOutputs.length; i++) {
-      this.outputConnectors.push(
-        new Connector(this, i, false, this.defaultOutputs[i])
-      ); //owner,index,?input,description
+    for(let i =0 ; i< this.defaultOutputs.length; i ++){
+      this.outputConnectors.push(new Connector(this,i,false,this.defaultOutputs[i]));//owner,index,?input,description
     }
   }
 
-  initialize() {
-    console.log("-->INITIALIZE: ", this.path);
-    if (!this.initialized) {
-      console.log("INIT CONNECTED: ", this.path);
+  initialize(){
+    if (this.initialized) {
+      return; // Prevent multiple initializations
+    }
+    console.log('-->INITIALIZE: ', this.name || this.path);
       this.initConnected();
       this.initFamily();
-      console.log("DO INIT: ", this.path);
+    console.log('DO INIT: ', this.name || this.path);
       this.doInit();
       this.initialized = true;
-    }
   }
 
-  updateOrderedInputs() {
+  updateOrderedInputs(){
     this.orderedInputs = [];
     this.inputs = [];
-    for (let i = 0; i < this.inputConnectors.length; i++) {
+    for(let i =0; i<this.inputConnectors.length; i++){
       const connector = this.inputConnectors[i];
-      if (connector.connections.length > 0) {
+      if(connector.connections.length>0){
         this.orderedInputs.push(connector.connections[0].owner);
         this.inputs.push(connector.connections[0].owner);
-      } else this.orderedInputs.push(null);
+      }
+      else this.orderedInputs.push(null);
     }
   }
 
-  initConnected() {
+  initConnected(){
+    // Initialize dependencies first
     for (let j = 0; j < this.dependencies.length; j++) {
-      this.dependencies[j].initialize();
+      if (!this.dependencies[j].initialized) {
+        this.dependencies[j].initialize();
+      }
     }
+    // Then initialize inputs
     for (let j = 0; j < this.inputs.length; j++) {
-      this.inputs[j].initialize();
+      if (!this.inputs[j].initialized) {
+        this.inputs[j].initialize();
+      }
     }
   }
 
-  initFamily() {
+  initFamily(){
     //BY FAMILY INITIALIZATION
   }
 
-  doInit() {
-    //EACH CLASS INITIALIZATION
+  doInit(){
+    //EACH CLASS INITIALIZATION   
   }
 
-  onConnectionChange() {
+  
+
+  onConnectionChange(){
     //BY FAMILY
   }
 
-  connect(a) {
-    //simplified serialized - use carefully
-    this.inputConnectors[this.inputs.length].connections.push(
-      a.outputConnectors[0]
-    );
+  connect(a){//simplified serialized - use carefully
+    this.inputConnectors[this.inputs.length].connections.push(a.outputConnectors[0]);
     this.inputs.push(a);
-    a.outputs.push(this);
-    if (!this.isMultiInputs) {
-      this.inputConnectors.push(
-        new Connector(
-          this,
-          this.inputConnectors.length,
-          true,
-          `Source${this.inputConnectors.length}`
-        )
-      );
+    a.outputs.push(this)
+    if(!this.isMultiInputs){
+      this.inputConnectors.push(new Connector(this,this.inputConnectors.length,true,`Source${this.inputConnectors.length}`));
     }
     this.updateOrderedInputs();
   }
 
-  updateConnected() {
-    for (let j = 0; j < this.dependencies.length; j++) {
-      this.dependencies[j].update();
-    }
-    for (let j = 0; j < this.inputs.length; j++) {
-      this.inputs[j].update();
-    }
+
+
+  updateConnected(){
+    for (let j = 0; j< this.dependencies.length; j++) {this.dependencies[j].update();}
+    for (let j = 0; j< this.inputs.length; j++) {this.inputs[j].update();}
   }
 
-  update() {
-    if (this.lastUpdate != this.time.frame) {
+
+  update(){
+    if (this.lastUpdate != this.time.frame){
       this.updateConnected();
       this.cook = performance.now();
       this.updateDo();
-      this.cook = (this.prevCook + performance.now() - this.cook) / 2;
-      this.prevCook = this.cook * 1;
+      this.cook = (this.prevCook+performance.now()-this.cook)/2;
+      this.prevCook = this.cook*1;
 
       this.lastUpdate = this.time.frame;
       this.initialized = false;
     }
   }
 
-  //UI STAFF ===============
+//UI STAFF ===============
 
-  createUI() {
-    this.opUI.op = document.createElement("div");
-    this.opUI.op.classList.add("op");
+
+  createUI(){
+    this.opUI.op = document.createElement('div');
+    this.opUI.op.classList.add('op');
     document.body.appendChild(this.opUI.op);
-    this.opUI.op.addEventListener("click", (event) => onOpClick(event, this));
-    this.opUI.op.addEventListener("mousedown", (event) => {
-      viewport.onMouseDownOp(event, this);
-    });
-
+    this.opUI.op.addEventListener('click', (event) => onOpClick(event, this));
+    this.opUI.op.addEventListener('mousedown', (event) => {viewport.onMouseDownOp(event, this);});
+    
     //INPUT CONNECTORS:
     const numInputs = this.inputConnectors.length;
-    if (this.isMultiInputs) {
-      for (var i in this.inputConnectors) {
+    if(this.isMultiInputs){
+      for(var i in this.inputConnectors){
         new ConnectorUI(this.inputConnectors[i]);
       }
     }
     //UNORDERED INPUTS
-    else {
+    else{
       new UnorderedConnectorUI(this);
     }
 
     //OUTPUT
-    const numOutputs = this.outputConnectors.length;
-    for (var i in this.outputConnectors) {
+    const numOutputs = this.outputConnectors.length
+    for(var i in this.outputConnectors){
       new ConnectorUI(this.outputConnectors[i]);
+      
     }
+
 
     this.u0 = 0;
     this.u1 = 0;
     this.v0 = 0;
     this.v1 = 0;
-
+    
     this.createUIbyClass();
   }
 
-  updataNodeXY(viewport) {
-    this.x = (this.nodeX - viewport.x) * viewport.zoom + viewport.width / 2;
-    this.y = (this.nodeY - viewport.y) * viewport.zoom + viewport.height / 2;
-    this.opUI.op.style.left = Math.floor(this.x).toString() + "px";
-    this.opUI.op.style.bottom = Math.floor(this.y).toString() + "px";
+  updataNodeXY(viewport){
+    
+    
+    this.x = (this.nodeX - viewport.x)*viewport.zoom+viewport.width/2;
+    this.y = (this.nodeY - viewport.y)*viewport.zoom+viewport.height/2;
+    this.opUI.op.style.left = Math.floor(this.x).toString()+'px';
+    this.opUI.op.style.bottom = Math.floor(this.y).toString()+'px';
     this.opUI.op.style.transform = `scale(${viewport.zoom})`;
-    this.opUI.op.style.setProperty("--parent-scale", viewport.zoom);
-    this.opUI.op.style.borderWidth = 1 / viewport.zoom + "px";
-    this.updateViewerCoord(viewport);
+    this.opUI.op.style.borderWidth = (1/viewport.zoom) + "px";
+    this.updateViewerCoord(viewport); 
 
-    if (this.selected)
-      this.opUI.op.style.boxShadow = `0 0 0 ${1 / viewport.zoom}px yellow`;
-    else if (this.current) this.opUI.op.style.boxShadow = "0 0 0 2px green";
-    else this.opUI.op.style.boxShadow = "none";
+    if(this.selected) this.opUI.op.style.boxShadow = `0 0 0 ${1/viewport.zoom}px yellow`;
+    else if(this.current) this.opUI.op.style.boxShadow = "0 0 0 2px green";
+    else this.opUI.op.style.boxShadow = 'none';
+
+
   }
 
-  updateViewerCoord(viewport) {
+
+
+
+  updateViewerCoord(viewport){
     let rect = this.opUI.op.getBoundingClientRect();
-    this.u0 = rect.left / viewport.width;
-    this.u1 = rect.right / viewport.width;
-    this.v0 = 1 - rect.bottom / viewport.height;
-    this.v1 = 1 - rect.top / viewport.height;
+    this.u0 = rect.left/viewport.width;
+    this.u1 = rect.right/viewport.width;
+    this.v0 = 1-rect.bottom/viewport.height;
+    this.v1 = 1-rect.top/viewport.height;
   }
 
-  createUIbyClass() {
-    //EACH FAMILY
+
+
+
+  createUIbyClass(){
+  //EACH FAMILY
   }
 
-  hideUi() {
+
+  hideUi(){
     this.opUI.op.style.visibility = "hidden";
   }
 
-  showUi() {
+  showUi(){
     this.opUI.op.style.visibility = "visible";
   }
+
 
   //HELPERS:
   clamp(value, min, max) {
@@ -406,20 +400,25 @@ class OP {
   }
 }
 
+
+
+
 //=============================== TOP =====================
-class TOP extends OP {
+class TOP extends OP{
   constructor(...args) {
     super(...args);
     this.gl = gl;
-    this.family = "TOP";
-    this.par.outputresolution = 0; //Output Resolution:  0: Use Input  1: Eighth  2: Quarter  3: Half  4: 2X  5: 4X  6: 8X  7: Fit Resolution  8: Limit Resolution  9: Custom Resolution  10: Parent Panel Size
-    this.par.resolutionw = 256; //Resolution
-    this.par.resolutionh = 256; //Resolution
+    this.family = 'TOP';
+    this.par.outputresolution = 0;  //Output Resolution:  0: Use Input  1: Eighth  2: Quarter  3: Half  4: 2X  5: 4X  6: 8X  7: Fit Resolution  8: Limit Resolution  9: Custom Resolution  10: Parent Panel Size
+    this.par.resolutionw = 256;  //Resolution
+    this.par.resolutionh = 256;  //Resolution
     this.fixedResInput = 0;
+
+    
   }
 
   //WEBGL 2.0
-  vertexShader = `#version 300 es
+  vertexShader =`#version 300 es
   in vec2 position;
   out vec3 vUV;
   void main() {
@@ -427,8 +426,8 @@ class TOP extends OP {
     vUV.xy = position * 0.5 + 0.5;
     vUV.z = 0.; 
   }`;
-
-  fragmentShader = "";
+  
+  fragmentShader = '';
   program;
   uniforms = [];
   output;
@@ -437,64 +436,47 @@ class TOP extends OP {
   buffer;
   toScreen = false;
 
-  appendUniform(name, type, vals) {
-    var c = { name: name, type: type, vals: vals };
+  appendUniform(name, type, vals){
+    var c = {'name':name, 'type':type, 'vals': vals};
     this.uniforms.push(c);
   }
 
-  createTarget(width, height, type) {
+
+  createTarget( width, height, type ) {
+
     var target = {};
     const gl = this.gl;
 
     target.framebuffer = gl.createFramebuffer();
     target.renderbuffer = gl.createRenderbuffer();
     target.texture = gl.createTexture();
-    gl.bindTexture(gl.TEXTURE_2D, target.texture);
-    gl.texImage2D(
-      gl.TEXTURE_2D,
-      0,
-      gl.RGBA,
-      width,
-      height,
-      0,
-      gl.RGBA,
-      type,
-      null
-    );
-    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE);
-    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
-    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.LINEAR);
-    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR);
-    gl.bindFramebuffer(gl.FRAMEBUFFER, target.framebuffer);
-    gl.framebufferTexture2D(
-      gl.FRAMEBUFFER,
-      gl.COLOR_ATTACHMENT0,
-      gl.TEXTURE_2D,
-      target.texture,
-      0
-    );
-    gl.bindTexture(gl.TEXTURE_2D, null);
-    gl.bindRenderbuffer(gl.RENDERBUFFER, null);
-    gl.bindFramebuffer(gl.FRAMEBUFFER, null);
+    gl.bindTexture( gl.TEXTURE_2D, target.texture );
+    gl.texImage2D( gl.TEXTURE_2D, 0, gl.RGBA, width, height, 0, gl.RGBA, type, null );
+    gl.texParameteri( gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE );
+    gl.texParameteri( gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE );
+    gl.texParameteri( gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.LINEAR );
+    gl.texParameteri( gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR);
+    gl.bindFramebuffer( gl.FRAMEBUFFER, target.framebuffer );
+    gl.framebufferTexture2D( gl.FRAMEBUFFER, gl.COLOR_ATTACHMENT0, gl.TEXTURE_2D, target.texture, 0 );
+    gl.bindTexture( gl.TEXTURE_2D, null );
+    gl.bindRenderbuffer( gl.RENDERBUFFER, null );
+    gl.bindFramebuffer( gl.FRAMEBUFFER, null);
     return target;
+
   }
 
-  createShader(src, type) {
-    var shader = this.gl.createShader(type);
-    this.gl.shaderSource(shader, src);
-    this.gl.compileShader(shader);
+  createShader( src, type ) {
+    var shader = this.gl.createShader( type );
+    this.gl.shaderSource( shader, src );
+    this.gl.compileShader( shader );
     if (!this.gl.getShaderParameter(shader, this.gl.COMPILE_STATUS)) {
-      console.error(
-        "Shader compile error:",
-        this.path,
-        this.gl.getShaderInfoLog(shader)
-      );
-      const shaderSourceLines = src.split("\n");
-      shaderSourceLines.forEach((line, index) => {
-        console.log(`${index + 1}: ${line}`);
-      });
-      this.gl.deleteShader(shader);
-      return null;
+        console.error('Shader compile error:', this.path, this.gl.getShaderInfoLog(shader));
+        const shaderSourceLines = src.split("\n");
+        shaderSourceLines.forEach((line, index) => {
+          console.log(`${index + 1}: ${line}`);
+        });
+        this.gl.deleteShader(shader);
+        return null;
     }
     // console.log(this.name, src);
     return shader;
@@ -502,68 +484,60 @@ class TOP extends OP {
 
   cacheUniformLocation(program, label) {
     if (program.uniformsCache === undefined) {
-      program.uniformsCache = {};
+        program.uniformsCache = {};
     }
     program.uniformsCache[label] = this.gl.getUniformLocation(program, label);
   }
 
-  setResolution() {
-    // console.log('=====>> RESIZE',this.name)
-    if (this.par.outputresolution == 0) {
-      //USE INPUT
-      if (this.inputs.length == 0) {
+  setResolution(){
+     // console.log('=====>> RESIZE',this.name)
+    if (this.par.outputresolution == 0){ //USE INPUT
+      if(this.inputs.length == 0){
         this.width = this.par.resolutionw;
         this.height = this.par.resolutionh;
-      } else {
+      }
+      else{
         const inOp = this.inputs[this.fixedResInput];
         // console.log('=========>> RES FROM INPUT',inOp.name)
         this.width = inOp.width;
         this.height = inOp.height;
       }
     }
-    if (this.par.outputresolution == 9) {
+    if (this.par.outputresolution == 9){
       this.width = this.par.resolutionw;
       this.height = this.par.resolutionh;
     }
 
-    if (this.par.outputresolution == 10) {
+    if (this.par.outputresolution == 10){
       this.width = this.gl.drawingBufferWidth;
       this.height = this.gl.drawingBufferHeight;
     }
 
-    this.appendUniform("resolution", "2f", [this.width, this.height]);
+    this.appendUniform('resolution','2f',[this.width,this.height]);
     // console.log('---->SET RESOLUTION:',this.name, this.width, this.height, this.fixedResInput);
-
+    
     let N = this.inputs.length;
-    if (N > 0) {
-      for (let i = 0; i < N; i++) {
-        this.appendUniform(`uTD2DInfos[${i}].res`, "4f", [
-          1 / this.inputs[i].width,
-          1 / this.inputs[i].height,
-          this.inputs[i].width,
-          this.inputs[i].height,
-        ]);
-        this.appendUniform(`uTD2DInfos[${i}].depth`, "4f", [1, 1, 1, 1]);
+    if (N>0){
+      for (let i=0; i<N; i++){
+        this.appendUniform(`uTD2DInfos[${i}].res`,'4f', [1./this.inputs[i].width, 1./this.inputs[i].height, this.inputs[i].width, this.inputs[i].height]);
+        this.appendUniform(`uTD2DInfos[${i}].depth`,'4f',[1.,1.,1.,1.]);
         // console.log(this.name,'TO UNIFORMS->', this.inputs[i].width,this.inputs[i].height);
       }
       // console.log(this.name, 'RES UNIFORM->', this.width,this.height);
     }
+
+
+
   }
 
-  insertTDUniforms() {
-    let example = "";
+  insertTDUniforms(){
+    let example = '';
     let texInfoArray = [];
     let N = this.inputs.length;
 
-    if (N > 0) {
-      for (let i = 0; i < N; i++) {
-        texInfoArray.push(
-          `TDTexInfo(vec4(1./${Math.round(
-            this.inputs[i].width
-          )}., 1./${Math.round(this.inputs[i].height)}., ${Math.round(
-            this.inputs[i].width
-          )}., ${Math.round(this.inputs[i].height)}.), vec4(1.))`
-        );
+    if (N>0){
+      for (let i=0; i<N; i++){
+        texInfoArray.push(`TDTexInfo(vec4(1./${Math.round(this.inputs[i].width)}., 1./${Math.round(this.inputs[i].height)}., ${Math.round(this.inputs[i].width)}., ${Math.round(this.inputs[i].height)}.), vec4(1.))`)
       }
       example = `
   struct TDTexInfo {
@@ -573,9 +547,9 @@ class TOP extends OP {
 
   uniform TDTexInfo uTD2DInfos[${N}];
   const int TD_NUM_2D_INPUTS = ${N};`;
-    }
-
-    this.fragmentShader = this.fragmentShader.replace("@TDUniforms@", example);
+  }
+  
+  this.fragmentShader = this.fragmentShader.replace('@TDUniforms@',example);
   }
 
   disposeResources() {
@@ -603,18 +577,16 @@ class TOP extends OP {
 
     // Delete output target resources (framebuffer, renderbuffer, texture)
     if (this.output) {
-      if (this.output.framebuffer)
-        gl.deleteFramebuffer(this.output.framebuffer);
-      if (this.output.renderbuffer)
-        gl.deleteRenderbuffer(this.output.renderbuffer);
+      if (this.output.framebuffer) gl.deleteFramebuffer(this.output.framebuffer);
+      if (this.output.renderbuffer) gl.deleteRenderbuffer(this.output.renderbuffer);
       if (this.output.texture) gl.deleteTexture(this.output.texture);
       this.output = null;
     }
-
+    
     // If you have any additional resources, delete them here.
   }
 
-  doInit() {
+  doInit(){
     // console.log('&&& DO INIT TOP');
     this.disposeResources();
     this.setResolution();
@@ -623,10 +595,12 @@ class TOP extends OP {
     this.compile();
     // console.log(this.name, ' shader:\n',this.fragmentShader);
   }
-  onResize() {}
+  onResize(){
 
-  resize() {
-    for (let j = 0; j < this.inputs.length; j++) {
+  }
+
+  resize(){
+    for (let j = 0; j< this.inputs.length; j++) {
       this.inputs[j].resize();
     }
 
@@ -634,336 +608,247 @@ class TOP extends OP {
     try {
       this.gl.useProgram(this.program);
       //RESOLUTION RELATED UNIFORMS ===============
-      if (
-        this.program.uniformsCache &&
-        this.program.uniformsCache["resolution"]
-      ) {
-        this.gl.uniform2f(
-          this.program.uniformsCache["resolution"],
-          this.width,
-          this.height
-        );
+      if(this.program.uniformsCache && this.program.uniformsCache['resolution']) {
+        this.gl.uniform2f(this.program.uniformsCache['resolution'], this.width, this.height);
       }
       let N = this.inputs.length;
-      if (N > 0) {
-        for (let i = 0; i < N; i++) {
-          this.gl.uniform4f(
-            this.program.uniformsCache[`uTD2DInfos[${i}].res`],
-            1 / this.inputs[i].width,
-            1 / this.inputs[i].height,
-            this.inputs[i].width,
-            this.inputs[i].height
-          );
-          this.gl.uniform4f(
-            this.program.uniformsCache[`uTD2DInfos[${i}].depth`],
-            1,
-            1,
-            1,
-            1
-          );
+      if (N>0) {
+        for (let i=0; i<N; i++) {
+          this.gl.uniform4f(this.program.uniformsCache[`uTD2DInfos[${i}].res`],1./this.inputs[i].width, 1./this.inputs[i].height, this.inputs[i].width, this.inputs[i].height);
+          this.gl.uniform4f(this.program.uniformsCache[`uTD2DInfos[${i}].depth`],1.,1.,1.,1.);
         }
       }
       this.gl.useProgram(null);
-      this.output = this.createTarget(
-        this.width,
-        this.height,
-        this.gl.UNSIGNED_BYTE
-      );
+      this.output = this.createTarget(this.width, this.height, this.gl.UNSIGNED_BYTE);
     } catch (e) {
-      console.error("catched: ", e);
+      console.error('catched: ',e);
     }
 
     this.onResize();
   }
 
-  onCompile() {}
+  onCompile(){
+  }
 
-  compile() {
+  compile(){
     const gl = this.gl;
-
+   
     this.buffer = gl.createBuffer();
-    gl.bindBuffer(gl.ARRAY_BUFFER, this.buffer);
-    gl.bufferData(
-      gl.ARRAY_BUFFER,
-      new Float32Array([
-        -1.0, -1.0, 1.0, -1.0, -1.0, 1.0, 1.0, -1.0, 1.0, 1.0, -1.0, 1.0,
-      ]),
-      gl.STATIC_DRAW
-    );
+    gl.bindBuffer( gl.ARRAY_BUFFER, this.buffer );
+    gl.bufferData( gl.ARRAY_BUFFER, new Float32Array( [-1.0,-1.0, 1.0,    -1.0,-1.0, 1.0,    1.0,-1.0,1.0,   1.0,-1.0,1.0 ] ), gl.STATIC_DRAW );
+
 
     this.program = gl.createProgram();
-    this.vs = this.createShader(this.vertexShader, gl.VERTEX_SHADER);
-    this.fs = this.createShader(this.fragmentShader, gl.FRAGMENT_SHADER);
-    if (this.vs == null || this.fs == null) return null;
+    this.vs = this.createShader( this.vertexShader, gl.VERTEX_SHADER );
+    this.fs = this.createShader( this.fragmentShader, gl.FRAGMENT_SHADER );
+    if ( this.vs == null || this.fs == null ) return null;
 
-    gl.attachShader(this.program, this.vs);
-    gl.attachShader(this.program, this.fs);
-    gl.deleteShader(this.vs);
-    gl.deleteShader(this.fs);
-    gl.linkProgram(this.program);
-    if (!gl.getProgramParameter(this.program, gl.LINK_STATUS)) {
-      var error = gl.getProgramInfoLog(this.program);
-      console.log(this.name, "fragmentShader:");
+
+    gl.attachShader( this.program, this.vs );
+    gl.attachShader( this.program, this.fs );
+    gl.deleteShader( this.vs );
+    gl.deleteShader( this.fs );
+    gl.linkProgram( this.program );
+    if ( !gl.getProgramParameter( this.program, gl.LINK_STATUS ) ) {
+      var error = gl.getProgramInfoLog( this.program );
+      console.log(this.name, 'fragmentShader:');
       console.log(this.fragmentShader);
       console.log(this.vertexShader);
-      console.error(error);
-      console.error(
-        "VALIDATE_STATUS: " +
-          gl.getProgramParameter(this.program, gl.VALIDATE_STATUS),
-        "ERROR: " + gl.getError()
-      );
+      console.error( error );
+      console.error( 'VALIDATE_STATUS: ' + gl.getProgramParameter( this.program, gl.VALIDATE_STATUS ), 'ERROR: ' + gl.getError() );
       let err = gl.getShaderInfoLog(this.fs);
-      err = err.split("ERROR:")[1].split(":")[1];
-      console.error(
-        this.name +
-          "  " +
-          gl.getShaderInfoLog(this.fs) +
-          "\n" +
-          err +
-          "\n" +
-          this.fragmentShader.split("\n")[err - 1]
-      );
-
+      err = err.split('ERROR:')[1].split(':')[1];
+      console.error(this.name+'  '+gl.getShaderInfoLog(this.fs)+'\n'+err+'\n'+this.fragmentShader.split('\n')[err-1]);
+      
       return;
     }
 
     //UNIFORMS
-    for (var key in this.uniforms) {
-      this.cacheUniformLocation(this.program, this.uniforms[key]["name"]);
-    }
+    for (var key in this.uniforms){
+      this.cacheUniformLocation( this.program, this.uniforms[key]['name']);
+    };
+
 
     if (this.inputs.length > 0) {
-      this.cacheUniformLocation(this.program, "sTD2DInputs[0]");
+        this.cacheUniformLocation(this.program, 'sTD2DInputs[0]');
     }
 
-    // Load program into GPU
+     // Load program into GPU
     gl.useProgram(this.program);
     this.screenVertexPosition = gl.getAttribLocation(this.program, "position");
     gl.enableVertexAttribArray(this.screenVertexPosition);
 
+
     //UNIFORMS SET VALS
-    for (var key in this.uniforms) {
-      if (this.uniforms[key]["type"] == "1f")
-        gl.uniform1f(
-          this.program.uniformsCache[this.uniforms[key]["name"]],
-          this.uniforms[key]["vals"][0]
-        );
-      if (this.uniforms[key]["type"] == "2f")
-        gl.uniform2f(
-          this.program.uniformsCache[this.uniforms[key]["name"]],
-          this.uniforms[key]["vals"][0],
-          this.uniforms[key]["vals"][1]
-        );
-      if (this.uniforms[key]["type"] == "3f")
-        gl.uniform3f(
-          this.program.uniformsCache[this.uniforms[key]["name"]],
-          this.uniforms[key]["vals"][0],
-          this.uniforms[key]["vals"][1],
-          this.uniforms[key]["vals"][2]
-        );
-      if (this.uniforms[key]["type"] == "4f")
-        gl.uniform4f(
-          this.program.uniformsCache[this.uniforms[key]["name"]],
-          this.uniforms[key]["vals"][0],
-          this.uniforms[key]["vals"][1],
-          this.uniforms[key]["vals"][2],
-          this.uniforms[key]["vals"][3]
-        );
-      if (this.uniforms[key]["name"] == "resolution")
-        gl.uniform2f(
-          this.program.uniformsCache[this.uniforms[key]["name"]],
-          this.width,
-          this.height
-        );
-      if (this.uniforms[key]["name"] == "res")
-        gl.uniform2f(
-          this.program.uniformsCache[this.uniforms[key]["name"]],
-          this.width,
-          this.height
-        );
-    }
+    for (var key in this.uniforms){
+      if (this.uniforms[key]['type'] == '1f') gl.uniform1f(this.program.uniformsCache[this.uniforms[key]['name']], this.uniforms[key]['vals'][0] );
+      if (this.uniforms[key]['type'] == '2f') gl.uniform2f(this.program.uniformsCache[this.uniforms[key]['name']], this.uniforms[key]['vals'][0],this.uniforms[key]['vals'][1] );
+      if (this.uniforms[key]['type'] == '3f') gl.uniform3f(this.program.uniformsCache[this.uniforms[key]['name']], this.uniforms[key]['vals'][0],this.uniforms[key]['vals'][1],this.uniforms[key]['vals'][2] );
+      if (this.uniforms[key]['type'] == '4f') gl.uniform4f(this.program.uniformsCache[this.uniforms[key]['name']], this.uniforms[key]['vals'][0],this.uniforms[key]['vals'][1] ,this.uniforms[key]['vals'][2] ,this.uniforms[key]['vals'][3] );
+      if (this.uniforms[key]['name'] == 'resolution') gl.uniform2f(this.program.uniformsCache[this.uniforms[key]['name']], this.width, this.height );
+      if (this.uniforms[key]['name'] == 'res') gl.uniform2f(this.program.uniformsCache[this.uniforms[key]['name']], this.width, this.height );
+      
+    };
 
     //OUTPUT
-    this.output = this.createTarget(this.width, this.height, gl.UNSIGNED_BYTE);
+    this.output = this.createTarget( this.width, this.height, gl.UNSIGNED_BYTE );
     // this.output = this.createTarget( this.width, this.height, gl.FLOAT );
     gl.useProgram(null);
   }
 
-  setUniform1f(name, vals) {
+  setUniform1f(name,vals) {
     this.gl.useProgram(this.program);
     this.gl.uniform1f(this.program.uniformsCache[name], vals[0]);
     this.gl.useProgram(null);
   }
 
-  setUniform2f(name, vals) {
+   setUniform2f(name,vals){
     this.gl.useProgram(this.program);
-    this.gl.uniform2f(this.program.uniformsCache[name], vals[0], vals[1]);
+    this.gl.uniform2f(this.program.uniformsCache[name], vals[0],vals[1]);
     this.gl.useProgram(null);
   }
 
-  setUniform3f(name, vals) {
+   setUniform3f(name,vals){
     this.gl.useProgram(this.program);
-    this.gl.uniform3f(
-      this.program.uniformsCache[name],
-      vals[0],
-      vals[1],
-      vals[2]
-    );
+    this.gl.uniform3f(this.program.uniformsCache[name], vals[0],vals[1],vals[2]);
     this.gl.useProgram(null);
   }
 
-  setUniform4f(name, vals) {
+  setUniform4f(name,vals){
     this.gl.useProgram(this.program);
-    this.gl.uniform4f(
-      this.program.uniformsCache[name],
-      vals[0],
-      vals[1],
-      vals[2],
-      vals[3]
-    );
+    this.gl.uniform4f(this.program.uniformsCache[name], vals[0],vals[1],vals[2],vals[3]);
     this.gl.useProgram(null);
   }
 
-  render() {
+
+  render(){
     const gl = this.gl;
     gl.useProgram(this.program);
 
     //INPUT UNIFORMS
 
-    if (this.inputs.length > 0) {
+    if (this.inputs.length > 0){
       let samplerIndices = new Int32Array(this.inputs.length);
-      for (let i = 0; i < this.inputs.length; i++) {
-        samplerIndices[i] = i;
-        gl.activeTexture(gl.TEXTURE0 + i);
-        gl.bindTexture(gl.TEXTURE_2D, this.inputs[i].output.texture);
-        gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE);
-        gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
-        gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR);
-        gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.LINEAR);
+      for (let i = 0; i < this.inputs.length; i++){
+          samplerIndices[i] = i;
+          gl.activeTexture( gl.TEXTURE0 + i );
+          gl.bindTexture( gl.TEXTURE_2D, this.inputs[i].output.texture );
+          gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE);
+          gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
+          gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR);
+          gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.LINEAR);
       }
-      gl.uniform1iv(
-        this.program.uniformsCache["sTD2DInputs[0]"],
-        samplerIndices
-      );
+      gl.uniform1iv(this.program.uniformsCache['sTD2DInputs[0]'], samplerIndices);
     }
 
     //OUTPUT
-    if (gl.getContextAttributes().antialias) {
-      if (!this.toScreen)
-        gl.bindFramebuffer(gl.FRAMEBUFFER, this.output.framebuffer);
-      //SWITCH TO SCREEN HERE
-      else gl.bindFramebuffer(gl.FRAMEBUFFER, null);
-      gl.viewport(0, 0, this.width, this.height);
-      gl.bindBuffer(gl.ARRAY_BUFFER, this.buffer);
-      gl.vertexAttribPointer(
-        this.screenVertexPosition,
-        2,
-        gl.FLOAT,
-        false,
-        0,
-        0
-      );
-      gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
-      gl.drawArrays(gl.TRIANGLES, 0, 6);
-      gl.useProgram(null);
-    } else {
-      //NON AA FRO GL
-      gl.bindFramebuffer(gl.FRAMEBUFFER, this.output.framebuffer);
-      gl.viewport(0, 0, this.width, this.height);
-      gl.bindBuffer(gl.ARRAY_BUFFER, this.buffer);
-      gl.vertexAttribPointer(
-        this.screenVertexPosition,
-        2,
-        gl.FLOAT,
-        false,
-        0,
-        0
-      );
-      gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
-      gl.drawArrays(gl.TRIANGLES, 0, 6);
-      gl.useProgram(null);
+    if (gl.getContextAttributes().antialias){
+    if(!this.toScreen) gl.bindFramebuffer( gl.FRAMEBUFFER, this.output.framebuffer ); //SWITCH TO SCREEN HERE
+    else gl.bindFramebuffer( gl.FRAMEBUFFER, null ); 
+    gl.viewport(0, 0, this.width, this.height);
+    gl.bindBuffer( gl.ARRAY_BUFFER, this.buffer );
+    gl.vertexAttribPointer( this.screenVertexPosition, 2, gl.FLOAT, false, 0, 0 );
+    gl.clear( gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT );
+    gl.drawArrays( gl.TRIANGLES, 0, 6 );
+    gl.useProgram(null);
+  }
 
-      if (this.toScreen) {
-        gl.bindFramebuffer(gl.READ_FRAMEBUFFER, this.output.framebuffer);
-        gl.bindFramebuffer(gl.DRAW_FRAMEBUFFER, null);
-        gl.blitFramebuffer(
-          0,
-          0,
-          this.width,
-          this.height, // source rectangle
-          0,
-          0,
-          this.width,
-          this.height, // destination rectangle
-          gl.COLOR_BUFFER_BIT, // which buffers to copy
-          gl.NEAREST // filtering method
-        );
-        gl.bindFramebuffer(gl.READ_FRAMEBUFFER, null);
-        gl.bindFramebuffer(gl.DRAW_FRAMEBUFFER, null);
-      }
+  else{
+    //NON AA FRO GL
+    gl.bindFramebuffer( gl.FRAMEBUFFER, this.output.framebuffer );
+    gl.viewport(0, 0, this.width, this.height);
+    gl.bindBuffer( gl.ARRAY_BUFFER, this.buffer );
+    gl.vertexAttribPointer( this.screenVertexPosition, 2, gl.FLOAT, false, 0, 0 );
+    gl.clear( gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT );
+    gl.drawArrays( gl.TRIANGLES, 0, 6 );
+    gl.useProgram(null);
+
+
+    if (this.toScreen) {
+      gl.bindFramebuffer(gl.READ_FRAMEBUFFER, this.output.framebuffer);
+      gl.bindFramebuffer(gl.DRAW_FRAMEBUFFER, null);
+      gl.blitFramebuffer(
+        0, 0, this.width, this.height, // source rectangle
+        0, 0, this.width, this.height, // destination rectangle
+        gl.COLOR_BUFFER_BIT,           // which buffers to copy
+        gl.NEAREST                     // filtering method
+      );
+      gl.bindFramebuffer(gl.READ_FRAMEBUFFER, null);
+      gl.bindFramebuffer(gl.DRAW_FRAMEBUFFER, null);
     }
   }
 
-  updateViewerCoord(viewport) {
-    let rect = this.opUI.texture.getBoundingClientRect();
-    this.u0 = rect.left / viewport.width;
-    this.u1 = rect.right / viewport.width;
-    this.v0 = 1 - rect.bottom / viewport.height;
-    this.v1 = 1 - rect.top / viewport.height;
+
   }
+
+  updateViewerCoord(viewport){
+
+    let rect = this.opUI.texture.getBoundingClientRect();
+    this.u0 = rect.left/viewport.width;
+    this.u1 = rect.right/viewport.width;
+    this.v0 = 1-rect.bottom/viewport.height;
+    this.v1 = 1-rect.top/viewport.height;
+  }
+  
 
   //UI
-  createUIbyClass() {
-    this.opUI.op.style.backgroundColor = "rgba(0, 0, 0, 0.1)";
+  createUIbyClass(){
 
-    this.opUI.texture = document.createElement("div");
-    this.opUI.texture.classList.add("texture");
+    this.opUI.op.style.backgroundColor =  'rgba(0, 0, 0, 0.1)';
+
+    this.opUI.texture = document.createElement('div');
+    this.opUI.texture.classList.add('texture');
     this.opUI.op.appendChild(this.opUI.texture);
-
-    this.opUI.name = document.createElement("div");
-    this.opUI.name.classList.add("topName");
+    
+    this.opUI.name = document.createElement('div');
+    this.opUI.name.classList.add('topName');
     this.opUI.op.appendChild(this.opUI.name);
-    this.opUI.name.textContent = this.name;
+    this.opUI.name.textContent = this.name
 
-    this.opUI.cook = document.createElement("div");
-    this.opUI.cook.classList.add("cook");
+    this.opUI.cook = document.createElement('div');
+    this.opUI.cook.classList.add('cook');
     this.opUI.op.appendChild(this.opUI.cook);
-    this.opUI.cook.textContent = "0000";
+    this.opUI.cook.textContent = '0000';
   }
 
-  updateUI() {
-    this.opUI.cook.textContent = ""; //(this.cook).toFixed(4);
+  updateUI(){
+    this.opUI.cook.textContent = '';//(this.cook).toFixed(4);
+    
   }
+  
 }
+
 
 //=============================== COMP ========================
 
-class COMP extends OP {
+class COMP extends OP{
   constructor(...args) {
     super(...args);
     this.parent = parent;
-    this.family = "COMP";
+    this.family = 'COMP';
     this.inputOps = [];
     this.currentChild = null;
     this.selectedChildren = [];
     this.childOps = [];
+    
   }
-
-  updateDo() {}
-
-  initFamily() {
+  
+  updateDo(){ 
+  }
+  
+  initFamily(){
     this.childOps.forEach((op) => {
-      if (["inCHOP", "inTOP", "inMAT", "inSOP", "inDAT"].includes(op.OPType)) {
+      if(['inCHOP','inTOP','inMAT','inSOP','inDAT'].includes(op.OPType)){
       }
     });
   }
 
-  findChildren() {
+  findChildren(){
     let children = [];
     const getChilds = (cOp) => {
       cOp.childOps.forEach((op) => {
         children.push(op);
-        if (op.family == "COMP") getChilds(op);
+        if (op.family == 'COMP') getChilds(op);
       });
     };
     getChilds(this);
@@ -972,37 +857,44 @@ class COMP extends OP {
   }
 
   //UI
-  createUIbyClass() {
-    this.opUI.op.addEventListener("dblclick", (event) =>
-      onDoubleClickCOMP(event, this)
-    );
-    this.opUI.name = document.createElement("div");
-    this.opUI.name.classList.add("compName");
+  createUIbyClass(){
+    
+    this.opUI.op.addEventListener('dblclick', (event) => onDoubleClickCOMP(event, this));
+    this.opUI.name = document.createElement('div');
+    this.opUI.name.classList.add('compName');
     this.opUI.op.appendChild(this.opUI.name);
-    this.opUI.name.textContent = this.name;
+    this.opUI.name.textContent = this.name
+    
   }
 
-  updateUI() {}
+  updateUI(){
+    
+  }
+  
 }
+
+
 
 //=============================== CHOP ========================
 
-class CHOP extends OP {
+class CHOP extends OP{
   constructor(...args) {
     super(...args);
-    this.family = "CHOP";
+    this.family = 'CHOP';
     this.numChans = 1;
+
+    
   }
   chans = [];
   minUi = 0;
   maxUi = 1;
-
-  initFamily() {
+  
+  initFamily(){
     this.chans = new Array(this.numChans).fill(0);
   }
 
   //UI
-  createUIbyClass() {
+   createUIbyClass(){
     // this.opUI.op = document.createElement('div');
     // this.opUI.op.classList.add('op');
     // document.body.appendChild(this.opUI.op);
@@ -1010,1005 +902,109 @@ class CHOP extends OP {
     // this.opUI.op.style.top =this.nodeY*window.innerHeight+'px';
     // this.opUI.op.style.left =this.nodeX*window.innerWidth+'px';
 
-    for (let i = 0; i < this.chans.length; i++) {
-      this.opUI[i] = document.createElement("div");
-      this.opUI[i].classList.add("chan");
+
+
+    for (let i = 0;i<this.chans.length; i++){
+      this.opUI[i] = document.createElement('div');
+      this.opUI[i].classList.add('chan');
       this.opUI.op.appendChild(this.opUI[i]);
       this.opUI[i].textContent = this.chans[i];
 
       //bars
-      this.opUIbars[i] = document.createElement("div");
-      this.opUIbars[i].classList.add("chanBar");
+      this.opUIbars[i] = document.createElement('div');
+      this.opUIbars[i].classList.add('chanBar');
       this.opUI.op.appendChild(this.opUIbars[i]);
+
+
     }
-    this.opUI.name = document.createElement("div");
-    this.opUI.name.classList.add("chopName");
+    this.opUI.name = document.createElement('div');
+    this.opUI.name.classList.add('chopName');
     this.opUI.op.appendChild(this.opUI.name);
-    this.opUI.name.textContent = this.name;
+    this.opUI.name.textContent = this.name
 
-    this.opUI.cook = document.createElement("div");
-    this.opUI.cook.classList.add("cook");
+    this.opUI.cook = document.createElement('div');
+    this.opUI.cook.classList.add('cook');
     this.opUI.op.appendChild(this.opUI.cook);
+    
   }
 
-  updateUI() {
-    for (let i = 0; i < this.chans.length; i++) {
-      this.opUI[i].textContent = this.chans[i].toFixed(8);
-      this.opUIbars[i].style.width =
-        ((this.chans[i] - this.minUi) / (this.maxUi - this.minUi)) * 100 + "%";
-      if (this.chans[i] < this.minUi) this.minUi = this.chans[i] * 1;
-      if (this.chans[i] > this.maxUi) this.maxUi = this.chans[i] * 1;
-      this.opUI.cook.textContent = ""; //(this.cook).toFixed(4);
+  updateUI(){
+    for (let i = 0;i<this.chans.length; i++){
+      this.opUI[i].textContent = (this.chans[i]).toFixed(8);
+      this.opUIbars[i].style.width = (this.chans[i]-this.minUi)/(this.maxUi-this.minUi)*100 + '%';
+      if(this.chans[i]<this.minUi) this.minUi = this.chans[i]*1;
+      if(this.chans[i]>this.maxUi) this.maxUi = this.chans[i]*1;
+      this.opUI.cook.textContent = '';//(this.cook).toFixed(4);
+
+
     }
   }
+  
 }
+
+
 
 //=============================== OutTOP ========================
-class OutTOP extends TOP {
+class OutTOP extends TOP{
   constructor(name, time, gl) {
-    super(name, time, gl, true, ["Source 1"], ["Output"]);
-    this.OPType = "outTOP";
+    super(name, time, gl, true, ['Source 1'], ['Output']);
+    this.OPType = 'outTOP';
     this.minInputs = 1;
     this.maxInputs = 1;
 
-    this.fragmentShader =
-      "# version 300 es \nprecision highp float;\nin vec3 vUV;\nuniform sampler2D sTD2DInputs[1];\n@TDUniforms@\nuniform vec2 resolution;\nuniform float time;\nout vec4 fragColor;\nvoid main()\n{\nvec4 c = texture(sTD2DInputs[0], vUV.st);\nfragColor = (c);\n}\n";
+
+
+    this.fragmentShader = "# version 300 es \nprecision highp float;\nin vec3 vUV;\nuniform sampler2D sTD2DInputs[1];\n@TDUniforms@\nuniform vec2 resolution;\nuniform float time;\nout vec4 fragColor;\nvoid main()\n{\nvec4 c = texture(sTD2DInputs[0], vUV.st);\nfragColor = (c);\n}\n";
+    
   }
 
-  updateDo() {
+  updateDo(){ 
     this.render();
   }
+  
 }
+
+
+
 
 //=============================== GlslmultiTOP ========================
-class GlslmultiTOP extends TOP {
+class GlslmultiTOP extends TOP{
   constructor(name, time, gl) {
-    super(name, time, gl, false, ["Source 1"], ["Output"]);
+    super(name, time, gl, false, ['Source 1'], ['Output']);
     this.minInputs = 0;
     this.maxInputs = 9999;
-  }
 
-  updateDo() {
+
+
+  }
+  
+
+  updateDo(){ 
     this.render();
   }
+
 }
+
+
+
 
 //=============================== BaseCOMP ========================
-class BaseCOMP extends COMP {
+class BaseCOMP extends COMP{
   constructor(name, time, gl) {
     super(name, time, gl, true, [], []);
     this.minInputs = 0;
     this.maxInputs = 0;
-  }
-}
-
-//=============================== TriggerCHOP ========================
-class TriggerCHOP extends CHOP {
-  constructor(name, time, gl) {
-    super(name, time, gl, true, ["Source 1"], ["Output"]);
-    this.minInputs = 0;
-    this.maxInputs = 1;
-
-    //pars:
-    this.par.threshold = 1;
-    this.par.threshup = 0.0;
-    this.par.threshdown = 0.0;
-    this.par.retrigger = 0.0;
-    this.par.retriggerunit = 2; //0. I, 1. F, 2. S, 3. %
-    this.par.mintrigger = 0.0;
-    this.par.mintriggerunit = 2; //0. I, 1. F, 2. S, 3. %
-    this.par.triggeron = 0; //0. Increasing Values, 1. Decreasing Values
-
-    this.par.delay = 0.0;
-    this.par.delayunit = 2; //0. I, 1. F, 2. S, 3. %
-    this.par.attack = 0.2;
-    this.par.attackunit = 2; //0. I, 1. F, 2. S, 3. %
-    this.par.ashape = 3; //0. Linear, 1. Ease In, 2. Ease Out, 3. Ease in Ease out
-    this.par.peak = 1.0;
-    this.par.peaklen = 0.1;
-    this.par.peaklenunit = 2; //0. I, 1. F, 2. S, 3. %
-    this.par.decay = 0.2;
-    this.par.decayunit = 2; //0. I, 1. F, 2. S, 3. %
-    this.par.dshape = 3; //0. Linear, 1. Ease In, 2. Ease Out, 3. Ease in Ease out
-    this.par.sustain = 0.5;
-    this.par.minsustain = 0.0;
-    this.par.minsustainunit = 2; //0. I, 1. F, 2. S, 3. %
-    this.par.release = 0.3;
-    this.par.releaseunit = 2; //0. I, 1. F, 2. S, 3. %
-    this.par.rshape = 3; //0. Linear, 1. Ease In, 2. Ease Out, 3. Ease in Ease out
-
-    this.par.specifyrate = 0;
-    this.par.rate = 60.0;
-    this.par.complete = 1;
-    this.par.remainder = 1; //0. Discard Remainder, 1. Make Output Longer, 2. Mix Remainder with Beginning
-    this.par.multitriggeradd = 0;
-    this.par.clamppeak = 1;
-
-    //vars:
-    this.stage = []; //0. end, 1. attak,2.decay, 3.sustain, 4.release
-    this.phase = [];
-    this.prev = [];
-    this.onTriggerPulsePar = false;
-  }
-
-  triggerpulse() {
-    // triggerpulse parameter
-    this.onTriggerPulsePar = true;
-  }
-
-  updateDo() {
-    const onIcrease = this.par.triggeron == 0;
-    //this.chans = this.inputs[0].chans.slice();
-    for (let i = 0; i < this.chans.length; i++) {
-      //more than thresh
-      // if (this.inputs[0].chans[i]>=this.par.threshup)
-      if (
-        (this.inputs[0].chans[i] >= this.par.threshup && onIcrease) ||
-        (this.inputs[0].chans[i] <= this.par.threshup && !onIcrease) ||
-        this.onTriggerPulsePar
-      ) {
-        //trigger
-        // if (this.prev[i] < this.par.threshup){
-        if (
-          (this.prev[i] < this.par.threshup && onIcrease) ||
-          (this.prev[i] > this.par.threshup && !onIcrease) ||
-          this.onTriggerPulsePar
-        ) {
-          this.stage[i] = 1;
-          this.phase[i] = this.chans[i] * 1;
-        }
-
-        //sustain
-        else {
-          if (this.stage[i] == 3) {
-            this.chans[i] = this.par.sustain;
-          }
-        }
-      }
-
-      //less than thres
-      else {
-        if (
-          (this.prev[i] >= this.par.threshup && onIcrease) ||
-          (this.prev[i] <= this.par.threshup && !onIcrease)
-        ) {
-          //less than thresh and prev more than thresh
-          if (this.stage[i] == 3) {
-            this.stage[i] = 4;
-            this.phase[i] = 0;
-          }
-        }
-      }
-      //anyway
-
-      switch (this.stage[i]) {
-        case 0: //end
-          break;
-
-        case 1: //attak
-          if (this.phase[i] >= this.par.attack) {
-            this.stage[i] = 2;
-            this.phase[i] = this.phase[i] - this.par.attack;
-          } else {
-            this.chans[i] = this.phase[i] / this.par.attack;
-          }
-          break;
-
-        case 2: //decay
-          if (this.phase[i] >= this.par.decay) {
-            this.stage[i] = 3;
-            this.phase[i] = this.phase[i] - this.par.decay;
-          } else {
-            this.chans[i] =
-              (1 - this.phase[i] / this.par.decay) * (1 - this.par.sustain) +
-              this.par.sustain;
-          }
-          break;
-
-        case 3: //sustain
-          this.chans[i] = this.par.sustain;
-          break;
-
-        case 4: //release
-          if (this.phase[i] >= this.par.release) {
-            this.stage[i] = 0;
-            this.phase[i] = 0;
-            this.chans[i] = 0;
-          } else {
-            this.chans[i] =
-              (1 - this.phase[i] / this.par.release) * this.par.sustain;
-          }
-
-          break;
-
-        default:
-      }
-
-      this.phase[i] = this.phase[i] + this.time.deltas;
-    }
-
-    this.prev = this.inputs[0].chans.slice();
-    this.onTriggerPulsePar = false;
-  }
-
-  setVals(chans) {
-    this.chans = chans.slice();
-    this.stage = chans.slice();
-    this.phase = chans.slice();
-    this.prev = chans.slice();
-  }
-}
-
-//=============================== ConstantCHOP ========================
-class ConstantCHOP extends CHOP {
-  constructor(name, time, gl) {
-    super(name, time, gl, true, ["Snap Channels", "Active"], ["Output"]);
-    this.minInputs = 0;
-    this.maxInputs = 2;
-
-    //pars:
-  }
-  parMap = {};
-
-  updateDo() {
-    // console.log(this.name, ' UPDATE ', this.chans);
-    for (const [key, value] of Object.entries(this.parMap)) {
-      this.chans[value] = this.par[key] * 1;
-    }
-  }
-
-  doInit() {
-    let k = 0;
-    for (const [key, value] of Object.entries(this.par)) {
-      this.parMap[key] = k;
-      k += 1;
-    }
-  }
-
-  setVals(chans) {
-    // console.log(this.name, ' SET VALS ', chans);
-    this.chans = chans.slice();
-  }
-}
-
-//=============================== ContainerCOMP ========================
-class ContainerCOMP extends COMP {
-  constructor(name, time, gl) {
-    super(name, time, gl, true, [], []);
-    this.minInputs = 0;
-    this.maxInputs = 1;
-  }
-}
-
-//=============================== LimitCHOP ========================
-class LimitCHOP extends CHOP {
-  constructor(name, time, gl) {
-    super(name, time, gl, true, ["Source 1"], ["Output"]);
-    this.minInputs = 1;
-    this.maxInputs = 1;
-
-    //pars:
-    this.par.type = 0; //Type:  0: Off  1: Clamp  2: Loop  3: Zigzag
-    this.par.min = -1.0; //Minimum
-    this.par.max = 1.0; //Maximum
-    this.par.normrange1 = -1.0; //Normalize Range
-    this.par.normrange2 = 1.0; //Normalize Range
-    this.par.quantvalue = 0; //Quantize Value:  0: Off  1: Ceiling  2: Floor  3: Round
-    this.par.vstep = 0.1; //Value Step
-    this.par.voffset = 0.0; //Value Offset
-    this.par.quantindex = 0; //Quantize Index:  0: Off  1: Offset Relative to Start  2: Offset Relative to Zero
-    this.par.istep = 0.1; //Step
-    this.par.istepunit = 2; //Step Unit:  0: I  1: F  2: S  3: %
-    this.par.ioffset = 0.0; //Offset
-    this.par.ioffsetunit = 2; //Offset Unit:  0: I  1: F  2: S  3: %
-    this.par.scope = 0; //Scope:  0: *  1: chan1
-    this.par.srselect = 1; //Sample Rate Match:  0: Resample At First Input's Rate  1: Resample At Maximum Rate  2: Resample At Minimum Rate  3: Error If Rates Differ
-    this.par.exportmethod = 0; //Export Method:  0: DAT Table by Index  1: DAT Table by Name  2: Channel Name is Path:Parameter
-  }
-
-  clamp(value, min, max) {
-    return Math.min(Math.max(value, min), max);
-  }
-
-  updateDo() {
-    this.chans = this.inputs[0].chans.slice();
-
-    for (let i = 0; i < this.chans.length; i++) {
-      this.chans[i] = this.clamp(this.chans[i], this.par.min, this.par.max);
-    }
-  }
-}
-
-//=============================== MathCHOP ========================
-class MathCHOP extends CHOP {
-  constructor(name, time, gl) {
-    super(name, time, gl, false, ["Source 1"], ["Output"]);
-    this.minInputs = 1;
-    this.maxInputs = 9999;
-
-    //pars:
-    this.par.preop = 0; //0. Off, 1. Negate, 2. Positive, 3. Root, 4. Square, 5. Inverse
-    this.par.chanop = 0; //0. Off, 1. Add, 2. Subtract, 3. Multiply, 4. Divide, 5. Average, 6. Minimum, 7. Maximum, 8. Length
-    this.par.chopop = 0; //0. Off, 1. Add, 2. Subtract, 3. Multiply, 4. Divide, 5. Average, 6. Minimum, 7. Maximum, 8. Length
-    this.par.postop = 0; //0. Off, 1. Negate, 2. Positive, 3. Root, 4. Square, 5. Inverse
-    this.par.match = 0; //0. Channel Number, 1. Channel Name
-    this.par.align = 0; //0. Automatic, 1. Extend to Min/Max, 2. Stretch to Min/Max, 3. Shift to Minimum, 4. Shift to Maximum, 5. Shift to First Interval, 6. Trim to First Interval, 7. Stretch to First Interval, 8. Trim to Smallest Interval, 9. Stretch to Smallest Interval
-    this.par.interppars = 0;
-    this.par.integer = 0; //0. Off, 1. Ceiling, 2. Floor, 3. Round
-    this.par.preoff = 0.0;
-    this.par.gain = 1.0;
-    this.par.postoff = 0.0;
-    this.par.fromrange1 = 0.0;
-    this.par.fromrange2 = 1.0;
-    this.par.torange1 = 0.0;
-    this.par.torange2 = 1.0;
-    //vars
-  }
-
-  combine(a, b, type) {
-    if (type == 1) return a + b;
-    if (type == 2) return a - b;
-    if (type == 3) return a * b;
-    if (type == 4) return a / b;
-    if (type == 5) return (a + b) / 2;
-    if (type == 6) return Math.min(a, b);
-    if (type == 7) return Math.max(a, b);
-  }
-
-  preop(a, type) {
-    //ONLY THIS
-    if (type == 0) return a;
-    if (type == 1) return -a;
-    if (type == 2) return Math.abs(a);
-    if (type == 3) return Math.sqrt(a);
-    if (type == 4) return Math.pow(a, 2);
-    if (type == 5) {
-      if (a == 0) return a;
-      else return 1 / a;
-    }
-    return a;
-  }
-
-  combineChans(a) {
-    if (this.par.chanop == 0) {
-      let v = [];
-      for (let i = 0; i < a.length; i++) {
-        v.push(this.preop(a[i], this.par.preop));
-      }
-      return v;
-    } else {
-      let v = this.preop(a[0], this.par.preop);
-      for (let i = 1; i < a.length; i++) {
-        v = this.combine(v, this.preop(a[i], this.par.preop), this.par.chanop);
-      }
-      return [v];
-    }
-  }
-
-  combineChops(a) {
-    let b = [];
-    if (this.par.chopop == 0) {
-      for (let i = 0; i < a.length; i++) {
-        for (let j = 0; j < a[i].length; j++) {
-          b.push(this.preop(a[i][j], this.par.postop));
-        }
-      }
-    } else {
-      let c = a[0].slice();
-
-      for (let i = 1; i < a.length; i++) {
-        for (let j = 0; j < c.length; j++) {
-          c[j] = this.combine(c[j], a[i][j], this.par.chopop);
-        }
-      }
-
-      for (let i = 0; i < c.length; i++) {
-        b.push(this.preop(c[i], this.par.postop));
-      }
-    }
-    return b;
-  }
-
-  rounder(value) {
-    if (this.par.integer == 0) return value;
-    if (this.par.integer == 1) return Math.ceil(value);
-    if (this.par.integer == 2) return Math.floor(value);
-    if (this.par.integer == 3) return Math.round(value);
-  }
-  updateDo() {
-    this.chans = this.inputs[0].chans.slice();
-
-    let prechans = [];
-    for (let i = 0; i < this.inputs.length; i++) {
-      prechans.push(this.combineChans(this.inputs[i].chans));
-    }
-
-    prechans = this.combineChops(prechans);
-
-    this.chans = [];
-    for (let i = 0; i < prechans.length; i++) {
-      //Mult-Add Page
-      prechans[i] += this.par.preoff;
-      prechans[i] *= this.par.gain;
-      prechans[i] += this.par.postoff;
-
-      //Range page
-      prechans[i] =
-        ((prechans[i] - this.par.fromrange1) /
-          (this.par.fromrange2 - this.par.fromrange1)) *
-          (this.par.torange2 - this.par.torange1) +
-        this.par.torange1;
-      this.chans.push(this.rounder(prechans[i]));
-    }
-  }
-}
-
-//=============================== OutCHOP ========================
-class OutCHOP extends CHOP {
-  constructor(name, time, gl) {
-    super(name, time, gl, true, ["Source 1"], ["Output"]);
-    this.OPType = "outCHOP";
-    this.minInputs = 1;
-    this.maxInputs = 1;
-
-    //pars:
-  }
-
-  updateDo() {
-    this.chans = this.inputs[0].chans.slice();
-  }
-
-  setVals(chans) {}
-}
-
-//=============================== MergeCHOP ========================
-class MergeCHOP extends CHOP {
-  constructor(name, time, gl) {
-    super(name, time, gl, false, ["Source 1"], ["Output"]);
-    this.minInputs = 0;
-    this.maxInputs = 9999;
-
-    //pars:
-
-    //vars
-  }
-
-  updateDo() {
-    this.chans = this.inputs[0].chans.slice();
-    for (let j = 1; j < this.inputs.length; j++) {
-      this.chans = this.chans.concat(this.inputs[j].chans.slice());
-    }
-  }
-}
-
-//=============================== SelectCHOP ========================
-class SelectCHOP extends CHOP {
-  constructor(name, time, gl) {
-    super(name, time, gl, false, ["Source"], ["Output"]);
-    this.minInputs = 0;
-    this.maxInputs = 9999;
-
-    //pars:
-    this.par.chans = [];
-    //vars
-  }
-
-  updateDo() {
-    this.chans = [];
-    for (let i = 0; i < this.par.chans.length; i++) {
-      this.chans.push(this.inputs[0].chans[this.par.chans[i]] * 1);
-    }
-  }
-}
-
-//=============================== NullCHOP ========================
-class NullCHOP extends CHOP {
-  constructor(name, time, gl) {
-    super(name, time, gl, true, ["Source 1"], ["Output"]);
-    this.minInputs = 1;
-    this.maxInputs = 1;
-
-    //pars:
-  }
-
-  updateDo() {
-    this.chans = this.inputs[0].chans.slice();
-  }
-
-  setVals(chans) {}
-}
-
-//=============================== KeyboardinCHOP ========================
-class KeyboardinCHOP extends CHOP {
-  constructor(name, time, gl) {
-    super(name, time, gl, true, [], ["Output"]);
-    this.OPType = "keyboardinCHOP";
-    this.minInputs = 0;
-    this.maxInputs = 0;
-
-    this.par.active = 1; //Active:  0: Off  1: On  2: While Playing
-    this.par.keys = 1; //Keys:  0: 0  1: 1  2: 2  3: 3  4: 4  5: 5  6: 6  7: 7  8: 8  9: 9  10: A  11: B  12: C  13: D  14: E  15: F  16: G  17: H  18: I  19: J  20: K  21: L  22: M  23: N  24: O  25: P  26: Q  27: R  28: S  29: T  30: U  31: V  32: W  33: X  34: Y  35: Z  36: Comma ,  37: Period .
-    this.par.modifiers = 0; //Modifier Keys:  0: Ignore  1: None  2: Control  3: Alt  4: Control and Alt  5: Shift  6: Shift and Alt  7: Shift and Control  8: Shift and Control and Alt
-    this.par.channelnames = 0; //Channel Names:  0: by Key Name  1: by Channel Number
-    this.par.rate = 60.0; //Sample Rate
-    this.par.left = 0; //Extend Left:  0: Hold  1: Slope  2: Cycle  3: Mirror  4: Default Value
-    this.par.right = 0; //Extend Right:  0: Hold  1: Slope  2: Cycle  3: Mirror  4: Default Value
-    this.par.defval = 0.0; //Default Value
-    this.par.timeslice = 0; //Time Slice
-    this.par.scope = 0; //Scope:  0: *
-    this.par.srselect = 1; //Sample Rate Match:  0: Resample At First Input's Rate  1: Resample At Maximum Rate  2: Resample At Minimum Rate  3: Error If Rates Differ
-    this.par.exportmethod = 0; //Export Method:  0: DAT Table by Index  1: DAT Table by Name  2: Channel Name is Path:Parameter
-
-    this.doChannels = [];
-    this.chans = [0, 0, 0, 0]; //left right up down
-  }
-
-  updateDo() {}
-
-  doInit() {
-    window.addEventListener("keydown", this.handleKeyDown.bind(this));
-    window.addEventListener("keyup", this.handleKeyUp.bind(this));
-  }
-
-  handleKeyDown(e) {
-    // Using e.code for more consistent key identification
-    switch (e.code) {
-      case "ArrowLeft":
-        this.chans[0] = 1;
-        break;
-      case "ArrowRight":
-        this.chans[1] = 1;
-        break;
-      case "ArrowUp":
-        this.chans[2] = 1;
-        break;
-      case "ArrowDown":
-        this.chans[3] = 1;
-        break;
-      default:
-        break;
-    }
-  }
-
-  handleKeyUp(e) {
-    switch (e.code) {
-      case "ArrowLeft":
-        this.chans[0] = 0;
-        break;
-      case "ArrowRight":
-        this.chans[1] = 0;
-        break;
-      case "ArrowUp":
-        this.chans[2] = 0;
-        break;
-      case "ArrowDown":
-        this.chans[3] = 0;
-        break;
-      default:
-        break;
-    }
-  }
-
-  setVals(chans) {}
-}
-
-//=============================== HoldCHOP ========================
-class HoldCHOP extends CHOP {
-  constructor(name, time, gl) {
-    super(name, time, gl, true, ["Source", "Trigger"], ["Output"]);
-    this.minInputs = 1;
-    this.maxInputs = 2;
-
-    //pars:
-    this.par.sample = 0; //Sample:  0: Off to On  1: While On  2: On to Off  3: While Off  4: On Value Change
-    this.par.scope = 0; //Scope:  0: *
-    this.par.exportmethod = 0; //Export Method:  0: DAT Table by Index  1: DAT Table by Name  2: Channel Name is Path:Parameter
-  }
-
-  clamp(value, min, max) {
-    return Math.min(Math.max(value, min), max);
-  }
-
-  sample(i) {
-    this.chans[i] = this.inputs[0].chans[i] * 1;
-  }
-
-  updateDo() {
-    this.gates = this.inputs[1].chans.slice();
-
-    if (this.par.sample == 0) {
-      //OFF TO ON
-
-      for (let i = 0; i < this.inputs[0].chans.length; i++) {
-        const gateIndex = this.clamp(i, 0, this.maxGatesIndex);
-        if (this.prevGates[gateIndex] <= 0 && this.gates[gateIndex] > 0) {
-          this.sample(i);
-        }
-      }
-      this.prevGates = this.inputs[1].chans.slice();
-    }
-
-    if (this.par.sample == 1) {
-      //WHILE ON
-
-      for (let i = 0; i < this.inputs[0].chans.length; i++) {
-        const gateIndex = this.clamp(i, 0, this.maxGatesIndex);
-        if (this.gates[gateIndex] > 0) {
-          this.sample(i);
-        }
-      }
-      this.prevGates = this.inputs[1].chans.slice();
-    }
-
-    if (this.par.sample == 2) {
-      //ON TO OFF
-
-      for (let i = 0; i < this.inputs[0].chans.length; i++) {
-        const gateIndex = this.clamp(i, 0, this.maxGatesIndex);
-        if (this.prevGates[gateIndex] > 0 && this.gates[gateIndex] <= 0) {
-          this.sample(i);
-        }
-      }
-      this.prevGates = this.inputs[1].chans.slice();
-    }
-
-    if (this.par.sample == 3) {
-      //WHILE OFF
-
-      for (let i = 0; i < this.inputs[0].chans.length; i++) {
-        const gateIndex = this.clamp(i, 0, this.maxGatesIndex);
-        if (this.gates[gateIndex] <= 0) {
-          this.sample(i);
-        }
-      }
-      this.prevGates = this.inputs[1].chans.slice();
-    }
-
-    if (this.par.sample == 4) {
-      //VALUE CHANGE
-
-      for (let i = 0; i < this.inputs[0].chans.length; i++) {
-        const gateIndex = this.clamp(i, 0, this.maxGatesIndex);
-        if (this.gates[gateIndex] != this.prevGates[gateIndex]) {
-          this.sample(i);
-        }
-      }
-      this.prevGates = this.inputs[1].chans.slice();
-    }
-  }
-
-  doInit() {
-    this.maxGatesIndex = this.inputs[1].chans.length - 1;
-    this.chans = this.inputs[0].chans.slice();
-    this.prevGates = this.inputs[1].chans.slice();
-  }
-}
-
-//=============================== MouseinCHOP ========================
-class MouseinCHOP extends CHOP {
-  constructor(name, time, gl) {
-    super(name, time, gl, true, [], ["Output"]);
-    this.minInputs = 0;
-    this.maxInputs = 0;
-
-    this.par.active = 1; //0. Off, 1. On, 2. While Playing
-    this.par.output = 0; //0. Normalized, 1. Normalized Aspect, 2. Absolute
-    this.par.wheelinc = 0.005;
-    this.doChannels = [];
-    this.chans = [];
-  }
-
-  updateDo() {}
-
-  init() {
-    const documentWidth = window.innerWidth;
-    const documentHeight = window.innerHeight;
-    const aspect = documentWidth / documentHeight;
-    let buttonsMap = [-1, -1, -1];
-    let wheelChan = -1;
-    console.log("DOCHEIGHT: ", documentHeight);
-
-    // Prevent default touch and hold (long tap) behavior
-    document.addEventListener("contextmenu", (e) => {
-      e.preventDefault();
-    });
-
-    // Prevent text selection on touch devices
-    document.addEventListener("selectstart", (e) => {
-      e.preventDefault();
-    });
-
-    for (let i = 0; i < this.doChannels.length; i++) {
-      this.chans.push(0);
-
-      if (this.doChannels[i] == "posxname") {
-        // Mouse move event
-        document.addEventListener("mousemove", (e) => {
-          this.handlePointerMove(e, i);
-        });
-        // Touch move and start events
-        document.addEventListener("touchmove", (e) => {
-          e.preventDefault();
-          const touch = e.touches[0];
-          this.handlePointerMove(touch, i);
-        });
-        document.addEventListener("touchstart", (e) => {
-          e.preventDefault();
-          const touch = e.touches[0];
-          this.handlePointerMove(touch, i);
-        });
-      }
-
-      if (this.doChannels[i] == "posyname") {
-        // Mouse move event
-        document.addEventListener("mousemove", (e) => {
-          this.handlePointerMoveY(e, i);
-        });
-        // Touch move and start events
-        document.addEventListener("touchmove", (e) => {
-          e.preventDefault();
-          const touch = e.touches[0];
-          this.handlePointerMoveY(touch, i);
-        });
-        document.addEventListener("touchstart", (e) => {
-          e.preventDefault();
-          const touch = e.touches[0];
-          this.handlePointerMoveY(touch, i);
-        });
-      }
-
-      if (this.doChannels[i] == "wheel")
-        document.addEventListener("wheel", (e) => {
-          const chanIndex = i;
-          if (e.deltaY > 0) this.chans[chanIndex] -= this.par.wheelinc;
-          if (e.deltaY < 0) this.chans[chanIndex] += this.par.wheelinc;
-        });
-
-      if (this.doChannels[i] == "lbuttonname") buttonsMap[0] = i;
-      if (this.doChannels[i] == "mbuttonname") buttonsMap[1] = i;
-      if (this.doChannels[i] == "rbuttonname") buttonsMap[2] = i;
-    }
-
-    // Handle mouse events
-    document.addEventListener("mousedown", (event) => {
-      const curButtonChan = buttonsMap[event.button];
-      if (curButtonChan > -1) this.chans[curButtonChan] = 1;
-    });
-
-    document.addEventListener("mouseup", (event) => {
-      const curButtonChan = buttonsMap[event.button];
-      if (curButtonChan > -1) this.chans[curButtonChan] = 0;
-    });
-
-    // Handle touch events
-    document.addEventListener("touchstart", (event) => {
-      const curButtonChan = buttonsMap[0]; // Treat touch as left click
-      if (curButtonChan > -1) this.chans[curButtonChan] = 1;
-    });
-
-    document.addEventListener("touchend", (event) => {
-      const curButtonChan = buttonsMap[0]; // Treat touch as left click
-      if (curButtonChan > -1) this.chans[curButtonChan] = 0;
-    });
-  }
-
-  // Helper methods for pointer movement
-  handlePointerMove(e, chanIndex) {
-    let v = (e.clientX / window.innerWidth - 0.5) * 2;
-    if (this.par.output == 2) v = e.clientX;
-    this.chans[chanIndex] = v;
-  }
-
-  handlePointerMoveY(e, chanIndex) {
-    let v = window.innerHeight - e.clientY;
-    const aspect = window.innerWidth / window.innerHeight;
-    if (this.par.output == 0) v = (v / window.innerHeight - 0.5) * 2;
-    if (this.par.output == 1) v = ((v / window.innerHeight - 0.5) / aspect) * 2;
-    if (this.par.output == 2) v = v;
-    this.chans[chanIndex] = v;
-  }
-
-  setVals(chans) {
-    this.chans = chans;
-    let k = 0;
-    for (const [key, value] of Object.entries(this.par)) {
-      this.parMap[key] = k;
-      k += 1;
-    }
-  }
-}
-
-//=============================== SpeedCHOP ========================
-class SpeedCHOP extends CHOP {
-  constructor(name, time, gl) {
-    super(name, time, gl, true, ["Source", "Reset"], ["Output"]);
-    this.minInputs = 1;
-    this.maxInputs = 2;
-
-    //pars:
-    this.par.order = 0; //0. First, 1. Second, 2. Third
-    this.par.constant1 = 0.0;
-    this.par.constant2 = 0.0;
-    this.par.constant3 = 0.0;
-    this.par.limittype = 0; //0. Off, 1. Clamp, 2. Loop, 3. Zigzag
-    this.par.min = 0.0;
-    this.par.max = 1.0;
-    this.par.speedsamples = 0;
-    this.par.resetcondition = 1; //0. Off to On, 1. While On, 2. On to Off, 3. While Off
-    this.par.resetvalue = 0.0;
-    this.par.reset = 0;
-    this.par.resetonstart = 1;
-
-    //vars:
-    this.prev = 0;
-  }
-
-  clampSpeed(x, a, b) {
-    if (x > b) return b * 1;
-    if (x < a) return a * 1;
-    return x * 1;
-  }
-
-  loopSpeed(x, a, b) {
-    if (x > b) {
-      while (x > b) x = x - b + a;
-    }
-    if (x < a) {
-      while (x < a) x = b - (x - a);
-    }
-    return x;
-  }
-
-  doInit() {
-    this.reset();
-  }
-
-  reset() {
-    for (let i = 0; i < this.chans.length; i++)
-      this.chans[i] = this.par.resetvalue * 1;
-  }
-
-  updateDo() {
-    for (let i = 0; i < this.chans.length; i++) {
-      this.chans[i] += this.time.deltas * this.inputs[0].chans[i];
-      if (this.par.limittype == 1)
-        this.chans[i] = this.clampSpeed(
-          this.chans[i] * 1,
-          this.par.min,
-          this.par.max
-        );
-      if (this.par.limittype == 2)
-        this.chans[i] = this.loopSpeed(
-          this.chans[i] * 1,
-          this.par.min,
-          this.par.max
-        );
-
-      if (this.par.reset > 0) this.reset();
-    }
-
-    //reset on 2nd input
-    if (this.inputs[1] !== undefined) {
-      //offToOn
-      if (
-        this.par.resetcondition == 0 &&
-        this.prev <= 0 &&
-        this.inputs[1].chans[0] * 1 > 0
-      ) {
-        this.reset();
-      }
-
-      //whileOn
-      if (this.par.resetcondition == 1 && this.inputs[1].chans[0] * 1 > 0) {
-        this.reset();
-      }
-
-      //onToOff
-      if (
-        this.par.resetcondition == 2 &&
-        this.prev > 0 &&
-        this.inputs[1].chans[0] * 1 <= 0
-      ) {
-        this.reset();
-      }
-
-      //whileOff
-      if (this.par.resetcondition == 3 && this.inputs[1].chans[0] * 1 <= 0) {
-        this.reset();
-      }
-      this.prev = this.inputs[1].chans[0] * 1;
-    }
-  }
-
-  setVals(chans) {
-    this.chans = chans.slice();
-    // if (this.inputs[1] === undefined) this.inputs[1] = 0;
-  }
-}
-
-//=============================== FilterCHOP ========================
-class FilterCHOP extends CHOP {
-  constructor(name, time, gl) {
-    super(name, time, gl, true, ["Source", "Reset"], ["Output"]);
-    this.minInputs = 1;
-    this.maxInputs = 2;
-
-    //pars:
-    this.par.type = 0; //0. Gaussian, 1. Left Half Gaussian, 2. Box, 3. Left Half Box, 4. Edge Detect, 5. Sharpen, 6. De-spike, 7. Ramp Preserve, 8. One Euro
-    this.par.effect = 1.0;
-    this.par.width = 1.0;
-    this.par.widthunit = 2; //0. I, 1. F, 2. S, 3. %
-    this.par.spike = 0.10000000149011612;
-    this.par.ramptolerance = 4.0;
-    this.par.ramprate = 60.0;
-    this.par.passes = 1;
-    this.par.filterpersample = 0;
-    this.par.cutoff = 1.0;
-    this.par.speedcoeff = 2.0;
-    this.par.slopecutoff = 1.0;
-    this.par.reset = 0;
-    this.prevWidth = this.par.width * 1;
-
-    //vars:
-    this.filterWindow = []; //0. end, 1. attak,2.decay, 3.sustain, 4.release
-    this.filterSum = 0;
-  }
-
-  updateDo() {
-    if (this.prevWidth != this.par.width) this.setVals(this.chans.slice());
-    this.chans = this.inputs[0].chans.slice();
-    for (let i = 0; i < this.chans.length; i++) {
-      this.windows[i].push(this.chans[i] * 1);
-      this.windows[i].shift();
-      // console.log(this.windows[i]);
-      let val = 0;
-      for (let j = 0; j < this.windows[i].length; j++) {
-        val += this.windows[i][j] * this.filter[j];
-      }
-
-      this.chans[i] = val / this.filterSum;
-    }
-
-    //this.prev = this.inputs[0].chans.slice();
-  }
-
-  setVals(chans) {
-    let filterWidth = Math.max(Math.floor(this.par.width * this.time.rate), 1);
-
-    this.chans = chans.slice();
-    this.windows = Array(this.chans.length);
-    for (let i = 0; i < this.chans.length; i++) {
-      this.windows[i] = Array(filterWidth);
-      for (let j = 0; j < this.windows[i].length; j++) {
-        this.windows[i][j] = this.chans[i];
-      }
-    }
-    this.filter = Array(this.windows[0].length);
-    if (this.filter.length < 2) this.filter = [1];
-    else {
-      for (let i = 0; i < this.filter.length; i++) {
-        this.filter[i] = Math.sin((i / (this.filter.length - 1)) * Math.PI);
-        this.filter[i] = Math.pow(this.filter[i], 4);
-      }
-    }
-    var filterSum = 0;
-    this.filter.forEach(function (num) {
-      filterSum += num;
-    });
-    this.filterSum = filterSum;
-
-    this.prevWidth = this.par.width * 1;
   }
 }
 
 //=============================== MoviefileinTOP ========================
-class MoviefileinTOP extends TOP {
+class MoviefileinTOP extends TOP{
   constructor(name, time, gl) {
-    super(name, time, gl, true, [], ["Output"]);
+    super(name, time, gl, true, [], ['Output']);
     this.minInputs = 0;
     this.maxInputs = 0;
 
-    this.OPType = "moviefileinTOP";
+    this.OPType = 'moviefileinTOP';
     this.fragmentShader = `#version 300 es
     precision highp float;
 
@@ -2031,40 +1027,43 @@ class MoviefileinTOP extends TOP {
     this.textTexture = null;
   }
 
-  onCompile() {
+  onCompile(){
     this.textCanvas = document.createElement("canvas");
     this.textCanvas.width = this.width;
     this.textCanvas.height = this.height;
-    console.log("ON COMPILE IMG:", this.textCanvas);
-
+    console.log('ON COMPILE IMG:',this.textCanvas);
+    
     const img = new Image();
     img.src = this.par.file;
     img.onload = () => {
-      this.textCanvas.width = this.width;
-      this.textCanvas.height = this.height;
-      const ctx = this.textCanvas.getContext("2d", { alpha: true });
-      ctx.clearRect(0, 0, this.textCanvas.width, this.textCanvas.height);
+        
+        this.textCanvas.width = this.width;
+        this.textCanvas.height = this.height;
+        const ctx = this.textCanvas.getContext("2d", { alpha: true });
+        ctx.clearRect(0, 0, this.textCanvas.width, this.textCanvas.height);
+          
+        //PREMULT ALPHA??
+        // Disable image smoothing to prevent alpha premultiplication
+        ctx.imageSmoothingEnabled = false;
+        ctx.drawImage(img, 0, 0, this.textCanvas.width, this.textCanvas.height);
+        
+        console.log('IMAGE RESOLUTION: ', this.width, this.height);
 
-      //PREMULT ALPHA??
-      // Disable image smoothing to prevent alpha premultiplication
-      ctx.imageSmoothingEnabled = false;
-      ctx.drawImage(img, 0, 0, this.textCanvas.width, this.textCanvas.height);
-
-      console.log("IMAGE RESOLUTION: ", this.width, this.height);
-
-      //COMMON
-      this.initTextCanvas();
-      this.compile();
+    
+        //COMMON
+        this.initTextCanvas();
+        this.compile();
     };
+    
   }
 
-  resize() {
-    for (let j = 0; j < this.inputs.length; j++) {
-      this.inputs[j].resize();
-    }
+  resize(){
+    for (let j = 0; j< this.inputs.length; j++) {this.inputs[j].resize();}
   }
+
 
   initTextCanvas() {
+
     this.textTexture = this.gl.createTexture();
     this.gl.bindTexture(this.gl.TEXTURE_2D, this.textTexture);
     this.gl.texImage2D(
@@ -2075,26 +1074,10 @@ class MoviefileinTOP extends TOP {
       this.gl.UNSIGNED_BYTE,
       this.textCanvas
     );
-    this.gl.texParameteri(
-      this.gl.TEXTURE_2D,
-      this.gl.TEXTURE_WRAP_S,
-      this.gl.CLAMP_TO_EDGE
-    );
-    this.gl.texParameteri(
-      this.gl.TEXTURE_2D,
-      this.gl.TEXTURE_WRAP_T,
-      this.gl.CLAMP_TO_EDGE
-    );
-    this.gl.texParameteri(
-      this.gl.TEXTURE_2D,
-      this.gl.TEXTURE_MIN_FILTER,
-      this.gl.LINEAR
-    );
-    this.gl.texParameteri(
-      this.gl.TEXTURE_2D,
-      this.gl.TEXTURE_MAG_FILTER,
-      this.gl.LINEAR
-    );
+    this.gl.texParameteri(this.gl.TEXTURE_2D, this.gl.TEXTURE_WRAP_S, this.gl.CLAMP_TO_EDGE);
+    this.gl.texParameteri(this.gl.TEXTURE_2D, this.gl.TEXTURE_WRAP_T, this.gl.CLAMP_TO_EDGE);
+    this.gl.texParameteri(this.gl.TEXTURE_2D, this.gl.TEXTURE_MIN_FILTER, this.gl.LINEAR);
+    this.gl.texParameteri(this.gl.TEXTURE_2D, this.gl.TEXTURE_MAG_FILTER, this.gl.LINEAR);
   }
 
   // Render the text texture
@@ -2111,326 +1094,999 @@ class MoviefileinTOP extends TOP {
     // Set the output target and draw
     if (!this.toScreen) {
       this.gl.bindFramebuffer(this.gl.FRAMEBUFFER, this.output.framebuffer);
-
+      
       //PREMULT ALPHA??
       // Disable blending to prevent alpha premultiplication
       this.gl.disable(this.gl.BLEND);
+      
     } else {
       this.gl.bindFramebuffer(this.gl.FRAMEBUFFER, null);
     }
     gl.viewport(0, 0, this.width, this.height);
     // Bind buffer and draw
     this.gl.bindBuffer(this.gl.ARRAY_BUFFER, this.buffer);
-    this.gl.vertexAttribPointer(
-      this.screenVertexPosition,
-      2,
-      this.gl.FLOAT,
-      false,
-      0,
-      0
-    );
+    this.gl.vertexAttribPointer(this.screenVertexPosition, 2, this.gl.FLOAT, false, 0, 0);
     this.gl.clear(this.gl.COLOR_BUFFER_BIT | this.gl.DEPTH_BUFFER_BIT);
     this.gl.drawArrays(this.gl.TRIANGLES, 0, 6);
   }
 
-  updateDo() {
+   updateDo(){ 
     this.render();
   }
 }
 
-//=============================== LfoCHOP ========================
-class LfoCHOP extends CHOP {
+
+
+
+//=============================== ContainerCOMP ========================
+class ContainerCOMP extends COMP{
   constructor(name, time, gl) {
-    super(
-      name,
-      time,
-      gl,
-      true,
-      ["Octave Control", "Reset", "Source Wave"],
-      ["Output"]
-    );
+    super(name, time, gl, true, [], []);
     this.minInputs = 0;
-    this.maxInputs = 3;
+    this.maxInputs = 1;
+	}  
+}
 
-    this.par.wavetype = 0; //0. Sine, 1. Gaussian, 2. Triangle, 3. Ramp, 4. Square, 5. Pulse
-    this.par.play = 1;
-    this.par.frequency = 1.0;
-    this.par.offset = 0.0;
-    this.par.amp = 1.0;
-    this.par.bias = 0.0;
-    this.par.phase = 0.0;
-    this.par.resetcondition = 0; //0. Off to On, 1. While On, 2. On to Off, 3. While Off
-    this.par.reset = 0;
-    this.par.rate = 60.0;
-    this.phase = 0;
-    this.lastPhase = 0;
-    this.lastTime = this.time.seconds;
+
+//=============================== LimitCHOP ========================
+class LimitCHOP extends CHOP{
+  constructor(name, time, gl) {
+    super(name, time, gl, true, ['Source 1'], ['Output']);
+    this.minInputs = 1;
+    this.maxInputs = 1;
+
+    //pars:
+this.par.type = 0;  //Type:  0: Off  1: Clamp  2: Loop  3: Zigzag
+this.par.min = -1.0;  //Minimum
+this.par.max = 1.0;  //Maximum
+this.par.normrange1 = -1.0;  //Normalize Range
+this.par.normrange2 = 1.0;  //Normalize Range
+this.par.quantvalue = 0;  //Quantize Value:  0: Off  1: Ceiling  2: Floor  3: Round
+this.par.vstep = 0.1;  //Value Step
+this.par.voffset = 0.0;  //Value Offset
+this.par.quantindex = 0;  //Quantize Index:  0: Off  1: Offset Relative to Start  2: Offset Relative to Zero
+this.par.istep = 0.1;  //Step
+this.par.istepunit = 2;  //Step Unit:  0: I  1: F  2: S  3: %
+this.par.ioffset = 0.0;  //Offset
+this.par.ioffsetunit = 2;  //Offset Unit:  0: I  1: F  2: S  3: %
+this.par.scope = 0;  //Scope:  0: *  1: chan1
+this.par.srselect = 1;  //Sample Rate Match:  0: Resample At First Input's Rate  1: Resample At Maximum Rate  2: Resample At Minimum Rate  3: Error If Rates Differ
+this.par.exportmethod = 0;  //Export Method:  0: DAT Table by Index  1: DAT Table by Name  2: Channel Name is Path:Parameter
+ 
   }
 
-  updateDo() {
-    if (this.par.play > 0) {
-      this.phase =
-        this.phase + (this.time.seconds - this.lastTime) * this.par.frequency;
-      this.phase = ((this.phase % 1) + 1) % 1; // true modulo
+  clamp(value, min, max) {
+  return Math.min(Math.max(value, min), max);
+}
+
+  updateDo(){
+    
+    this.chans = this.inputs[0].chans.slice();
+    
+    for (let i=0; i<this.chans.length;i++){
+        
+         this.chans[i] = this.clamp( this.chans[i],this.par.min,this.par.max);
+        
     }
-    if (this.par.reset == 1) this.phase = this.par.phase;
-
-    let v;
-
-    //0.sin
-    if (this.par.wavetype == 0)
-      v = Math.sin(((this.phase + this.par.phase) % 1) * Math.PI * 2); //PHASE!! - COPY TO THE REST OF TYPEs
-
-    //1.Gaussian
-    if (this.par.wavetype == 1)
-      v = Math.exp(-Math.pow(this.phase * 2 - 1, 2) * 4);
-
-    //2.triangle
-    if (this.par.wavetype == 2) {
-      if (this.phase <= 0.5) v = this.phase * 2;
-      else v = (1 - this.phase) * 2;
-    }
-
-    //3.ramp
-    if (this.par.wavetype == 3) v = this.phase;
-
-    //4.square
-    if (this.par.wavetype == 4) {
-      if (this.phase <= this.par.bias * 0.5 + 0.5) v = 1;
-      else v = -1;
-    }
-
-    //5.pulse
-    if (this.par.wavetype == 5) {
-      if (
-        (this.phase < this.lastPhase && this.par.frequency > 0) ||
-        (this.phase > this.lastPhase && this.par.frequency < 0)
-      )
-        v = 1;
-      else v = 0;
-    }
-
-    //amp & offset
-    v = v * this.par.amp + this.par.offset;
-
-    for (let i = 0; i < this.chans.length; i++) {
-      this.chans[i] = v;
-    }
-
-    this.lastTime = this.time.seconds;
-    this.lastPhase = this.phase;
-  }
-
-  setVals(chans) {
-    this.chans = chans.slice();
   }
 }
 
-//=============================== SPRITES =====================
-class ConvertedGLSLs_spritesAva extends OP {
+
+
+//=============================== MathCHOP ========================
+class MathCHOP extends CHOP{
   constructor(name, time, gl) {
-    super(name, time, gl, true, ["Source", "Mask"], ["Output"]);
+    super(name, time, gl, false, ['Source 1'], ['Output']);
+    this.minInputs = 1;
+    this.maxInputs = 9999;
+
+
+
+    //pars:
+    this.par.preop = 0; //0. Off, 1. Negate, 2. Positive, 3. Root, 4. Square, 5. Inverse
+    this.par.chanop = 0; //0. Off, 1. Add, 2. Subtract, 3. Multiply, 4. Divide, 5. Average, 6. Minimum, 7. Maximum, 8. Length
+    this.par.chopop = 0; //0. Off, 1. Add, 2. Subtract, 3. Multiply, 4. Divide, 5. Average, 6. Minimum, 7. Maximum, 8. Length
+    this.par.postop = 0; //0. Off, 1. Negate, 2. Positive, 3. Root, 4. Square, 5. Inverse
+    this.par.match = 0; //0. Channel Number, 1. Channel Name
+    this.par.align = 0; //0. Automatic, 1. Extend to Min/Max, 2. Stretch to Min/Max, 3. Shift to Minimum, 4. Shift to Maximum, 5. Shift to First Interval, 6. Trim to First Interval, 7. Stretch to First Interval, 8. Trim to Smallest Interval, 9. Stretch to Smallest Interval
+    this.par.interppars = 0;
+    this.par.integer = 0; //0. Off, 1. Ceiling, 2. Floor, 3. Round
+    this.par.preoff = 0.0;
+    this.par.gain = 1.0;
+    this.par.postoff = 0.0;
+    this.par.fromrange1 = 0.0;
+    this.par.fromrange2 = 1.0;
+    this.par.torange1 = 0.0;
+    this.par.torange2 = 1.0;
+    //vars
+
+
+   
+  }
+
+  combine(a,b,type){
+    if(type == 1)return a+b;
+    if(type == 2)return a-b;
+    if(type == 3)return a*b;
+    if(type == 4)return a/b;
+    if(type == 5)return (a+b)/2;
+    if(type == 6)return Math.min(a,b);
+    if(type == 7)return Math.max(a,b);
+    
+  }
+
+
+
+  preop(a,type){ //ONLY THIS
+    if(type == 0) return a;
+    if(type == 1) return -a;
+    if(type == 2) return Math.abs(a);
+    if(type == 3) return Math.sqrt(a);
+    if(type == 4) return Math.pow(a,2);
+    if(type == 5) {
+      if(a==0)return a;
+      else return 1/a;
+    }
+    return a
+  }
+
+  combineChans(a){
+    if (this.par.chanop == 0) {
+      let v =[];
+      for(let i = 0; i< a.length; i++){
+        v.push(this.preop(a[i],this.par.preop));
+      }
+      return v;
+    }
+    else{
+      let v = this.preop(a[0],this.par.preop);
+      for(let i = 1; i< a.length; i++){
+        v = this.combine(v,this.preop(a[i],this.par.preop),this.par.chanop);
+      }
+      return [v]
+    }
+  }
+
+  combineChops(a){
+    let b = [];
+    if (this.par.chopop == 0){
+      for(let i=0;i<a.length; i++){
+        for(let j=0;j<a[i].length; j++){
+          b.push(this.preop(a[i][j],this.par.postop));
+        }
+      }
+    }
+    
+    else {
+      let c = a[0].slice();
+
+      for(let i=1;i<a.length; i++){
+        for(let j=0;j<c.length; j++){
+          c[j] = this.combine(c[j],a[i][j],this.par.chopop)
+        }
+      }
+
+      for(let i=0;i<c.length; i++){
+        b.push(this.preop(c[i],this.par.postop));
+      }
+    }
+    return b;
+  }
+
+  updateDo(){
+    
+    this.chans = this.inputs[0].chans.slice();
+    
+
+    let prechans =[];
+    for (let i = 0; i< this.inputs.length; i++){
+      prechans.push(this.combineChans(this.inputs[i].chans))
+    }
+
+    prechans = this.combineChops(prechans);
+
+    this.chans = [];
+    for (let i=0; i<prechans.length;i++){
+        
+        
+        //Mult-Add Page
+        prechans[i] += this.par.preoff; 
+        prechans[i] *= this.par.gain;
+        prechans[i] += this.par.postoff;
+
+        //Range page
+        prechans[i] = (prechans[i]-this.par.fromrange1)/(this.par.fromrange2-this.par.fromrange1)*(this.par.torange2-this.par.torange1)+this.par.torange1;
+        this.chans.push(prechans[i]);
+    }
+  }
+}
+
+
+
+//=============================== OutCHOP ========================
+class OutCHOP extends CHOP{
+  constructor(name, time, gl) {
+    super(name, time, gl, true, ['Source 1'], ['Output']);
+    this.OPType = 'outCHOP';
+    this.minInputs = 1;
+    this.maxInputs = 1;
+
+
+    //pars:
+  }
+  
+
+  updateDo(){ 
+
+      this.chans = this.inputs[0].chans.slice();     
+  }
+
+  setVals(chans){
+
+    }
+}
+
+
+
+//=============================== MergeCHOP ========================
+class MergeCHOP extends CHOP{
+  constructor(name, time, gl) {
+    super(name, time, gl, false, ['Source 1'], ['Output']);
+    this.minInputs = 0;
+    this.maxInputs = 9999;
+
+    //pars:
+    
+    //vars
+
+
+   
+  }
+
+  updateDo(){
+    
+    this.chans = this.inputs[0].chans.slice();
+    for (let j = 1; j< this.inputs.length; j++){
+      this.chans = this.chans.concat(this.inputs[j].chans.slice());
+    }      
+
+  }
+}
+
+
+
+//=============================== SelectCHOP ========================
+class SelectCHOP extends CHOP{
+  constructor(name, time, gl) {
+    super(name, time, gl, false, ['Source'], ['Output']);
+    this.minInputs = 0;
+    this.maxInputs = 9999;
+
+    //pars:
+    this.par.chans = [];
+    //vars
+
+
+   
+  }
+
+  updateDo(){
+    
+    this.chans = [];
+    for (let i = 0; i< this.par.chans.length; i++){
+      this.chans.push(this.inputs[0].chans[this.par.chans[i]]*1);
+    }      
+
+  }
+}
+
+
+
+//=============================== NullCHOP ========================
+class NullCHOP extends CHOP{
+  constructor(name, time, gl) {
+    super(name, time, gl, true, ['Source 1'], ['Output']);
+    this.minInputs = 1;
+    this.maxInputs = 1;
+
+    //pars:
+  }
+  
+
+  updateDo(){ 
+
+      this.chans = this.inputs[0].chans.slice();     
+  }
+
+  setVals(chans){
+
+    }
+}
+
+
+
+//=============================== KeyboardinCHOP ========================
+class KeyboardinCHOP extends CHOP{
+  constructor(name, time, gl) {
+    super(name, time, gl, true, [], ['Output']);
+    this.OPType = 'keyboardinCHOP';
+    this.minInputs = 0;
+    this.maxInputs = 0;
+
+
+    this.par.active = 1;  //Active:  0: Off  1: On  2: While Playing
+    this.par.keys = 1;  //Keys:  0: 0  1: 1  2: 2  3: 3  4: 4  5: 5  6: 6  7: 7  8: 8  9: 9  10: A  11: B  12: C  13: D  14: E  15: F  16: G  17: H  18: I  19: J  20: K  21: L  22: M  23: N  24: O  25: P  26: Q  27: R  28: S  29: T  30: U  31: V  32: W  33: X  34: Y  35: Z  36: Comma ,  37: Period .
+    this.par.modifiers = 0;  //Modifier Keys:  0: Ignore  1: None  2: Control  3: Alt  4: Control and Alt  5: Shift  6: Shift and Alt  7: Shift and Control  8: Shift and Control and Alt
+    this.par.channelnames = 0;  //Channel Names:  0: by Key Name  1: by Channel Number
+    this.par.rate = 60.0;  //Sample Rate
+    this.par.left = 0;  //Extend Left:  0: Hold  1: Slope  2: Cycle  3: Mirror  4: Default Value
+    this.par.right = 0;  //Extend Right:  0: Hold  1: Slope  2: Cycle  3: Mirror  4: Default Value
+    this.par.defval = 0.0;  //Default Value
+    this.par.timeslice = 0;  //Time Slice
+    this.par.scope = 0;  //Scope:  0: *
+    this.par.srselect = 1;  //Sample Rate Match:  0: Resample At First Input's Rate  1: Resample At Maximum Rate  2: Resample At Minimum Rate  3: Error If Rates Differ
+    this.par.exportmethod = 0;  //Export Method:  0: DAT Table by Index  1: DAT Table by Name  2: Channel Name is Path:Parameter
+
+    this.doChannels =[];
+    this.chans = [0,0,0,0]; //left right up down
+
+
+  }
+
+  updateDo(){ 
+
+  }
+
+
+  doInit(){
+      window.addEventListener("keydown", this.handleKeyDown.bind(this));
+    window.addEventListener("keyup", this.handleKeyUp.bind(this));
+  }
+
+  handleKeyDown(e) {
+    // Using e.code for more consistent key identification
+    switch(e.code) {
+      case "ArrowLeft":
+        this.chans[0] = 1;
+        break;
+      case "ArrowRight":
+        this.chans[1] = 1;
+        break;
+      case "ArrowUp":
+        this.chans[2] = 1;
+        break;
+      case "ArrowDown":
+        this.chans[3] = 1;
+        break;
+      default:
+        break;
+    }
+    
+  }
+
+  handleKeyUp(e) {
+    switch(e.code) {
+      case "ArrowLeft":
+        this.chans[0] = 0;
+        break;
+      case "ArrowRight":
+        this.chans[1] = 0;
+        break;
+      case "ArrowUp":
+        this.chans[2] = 0;
+        break;
+      case "ArrowDown":
+        this.chans[3] = 0;
+        break;
+      default:
+        break;
+    }
+  }
+
+
+  
+
+  setVals(chans){
+  }
+}
+
+
+
+
+//=============================== HoldCHOP ========================
+class HoldCHOP extends CHOP{
+  constructor(name, time, gl) {
+    super(name, time, gl, true, ['Source','Trigger'], ['Output']);
+    this.minInputs = 1;
+    this.maxInputs = 2;
+
+    //pars:
+    this.par.sample = 0;  //Sample:  0: Off to On  1: While On  2: On to Off  3: While Off  4: On Value Change
+    this.par.scope = 0;  //Scope:  0: *
+    this.par.exportmethod = 0;  //Export Method:  0: DAT Table by Index  1: DAT Table by Name  2: Channel Name is Path:Parameter
+
+  }
+
+  clamp(value, min, max) {
+    return Math.min(Math.max(value, min), max);
+  }
+  
+
+  sample(i){
+    this.chans[i] = this.inputs[0].chans[i]*1;
+  }
+
+  updateDo(){
+    
+     this.gates = this.inputs[1].chans.slice();
+    
+    
+    if (this.par.sample == 0){ //OFF TO ON
+
+      for (let i = 0; i < this.inputs[0].chans.length; i++){
+        const gateIndex = this.clamp(i, 0, this.maxGatesIndex);
+        if(this.prevGates[gateIndex]<=0 && this.gates[gateIndex]>0){
+          this.sample(i);
+        }
+      }
+      this.prevGates = this.inputs[1].chans.slice();
+    }
+
+    if (this.par.sample == 1){ //WHILE ON
+
+      for (let i = 0; i < this.inputs[0].chans.length; i++){
+        const gateIndex = this.clamp(i, 0, this.maxGatesIndex);
+        if(this.gates[gateIndex]>0){
+          this.sample(i);
+        }
+      }
+      this.prevGates = this.inputs[1].chans.slice();
+    }
+
+    if (this.par.sample == 2){ //ON TO OFF
+
+      for (let i = 0; i < this.inputs[0].chans.length; i++){
+        const gateIndex = this.clamp(i, 0, this.maxGatesIndex);
+        if(this.prevGates[gateIndex]>0 && this.gates[gateIndex]<=0){
+          this.sample(i);
+        }
+      }
+      this.prevGates = this.inputs[1].chans.slice();
+    }
+
+    if (this.par.sample == 3){ //WHILE OFF
+
+      for (let i = 0; i < this.inputs[0].chans.length; i++){
+        const gateIndex = this.clamp(i, 0, this.maxGatesIndex);
+        if(this.gates[gateIndex]<=0){
+          this.sample(i);
+        }
+      }
+      this.prevGates = this.inputs[1].chans.slice();
+    }
+
+    if (this.par.sample == 4){ //VALUE CHANGE
+
+      for (let i = 0; i < this.inputs[0].chans.length; i++){
+        const gateIndex = this.clamp(i, 0, this.maxGatesIndex);
+        if(this.gates[gateIndex]!=this.prevGates[gateIndex]){
+          this.sample(i);
+        }
+      }
+      this.prevGates = this.inputs[1].chans.slice();
+    }
+
+   
+  }
+
+  doInit(){
+    this.maxGatesIndex = this.inputs[1].chans.length-1;
+    this.chans = this.inputs[0].chans.slice();
+    this.prevGates = this.inputs[1].chans.slice();
+  }
+}
+
+
+//=============================== MouseinCHOP ========================
+class MouseinCHOP extends CHOP{
+  constructor(name, time, gl) {
+    super(name, time, gl, true, [], ['Output']);
+    this.minInputs = 0;
+    this.maxInputs = 0;
+
+    this.par.active = 1; //0. Off, 1. On, 2. While Playing
+    this.par.output = 0; //0. Normalized, 1. Normalized Aspect, 2. Absolute
+    this.par.wheelinc = 0.005;
+    this.doChannels =[];
+    this.chans = [];
+
+
+  }
+
+  updateDo(){ 
+
+  }
+
+
+  init(){
+    const documentWidth = window.innerWidth;
+    const documentHeight = window.innerHeight;
+    const aspect = documentWidth/documentHeight;
+    let buttonsMap = [-1,-1,-1];
+    let wheelChan = -1;
+    console.log('DOCHEIGHT: ', documentHeight);
+
+    // Prevent default touch and hold (long tap) behavior
+    document.addEventListener('contextmenu', (e) => {
+      e.preventDefault();
+    });
+
+    // Prevent text selection on touch devices
+    document.addEventListener('selectstart', (e) => {
+      e.preventDefault();
+    });
+
+    for (let i=0;i<this.doChannels.length;i++){
+      this.chans.push(0);
+
+
+      if (this.doChannels[i]=='posxname') {
+        // Mouse move event
+        document.addEventListener("mousemove", (e) => {
+          this.handlePointerMove(e, i, documentWidth);
+        });
+        // Touch move and start events
+        document.addEventListener("touchmove", (e) => {
+          e.preventDefault();
+          const touch = e.touches[0];
+          this.handlePointerMove(touch, i, documentWidth);
+        });
+        document.addEventListener("touchstart", (e) => {
+          e.preventDefault();
+          const touch = e.touches[0];
+          this.handlePointerMove(touch, i, documentWidth);
+        });
+      }
+
+      if (this.doChannels[i]=='posyname') {
+        // Mouse move event
+        document.addEventListener("mousemove", (e) => {
+          this.handlePointerMoveY(e, i, documentHeight, aspect);
+        });
+        // Touch move and start events
+        document.addEventListener("touchmove", (e) => {
+          e.preventDefault();
+          const touch = e.touches[0];
+          this.handlePointerMoveY(touch, i, documentHeight, aspect);
+        });
+        document.addEventListener("touchstart", (e) => {
+          e.preventDefault();
+          const touch = e.touches[0];
+          this.handlePointerMoveY(touch, i, documentHeight, aspect);
+        });
+      }
+
+      if (this.doChannels[i]=='wheel')
+        document.addEventListener("wheel", (e) => {
+          const chanIndex = i;
+          if(e.deltaY>0)this.chans[chanIndex]-=this.par.wheelinc;
+          if(e.deltaY<0)this.chans[chanIndex]+=this.par.wheelinc;
+        });
+
+      if (this.doChannels[i]=='lbuttonname')buttonsMap[0] = i;
+      if (this.doChannels[i]=='mbuttonname')buttonsMap[1] = i;
+      if (this.doChannels[i]=='rbuttonname')buttonsMap[2] = i;
+     
+      
+
+
+    }
+
+    // Handle mouse events
+    document.addEventListener("mousedown", (event) => {
+      const curButtonChan = buttonsMap[event.button];
+      if(curButtonChan>-1) this.chans[curButtonChan] = 1;
+    });
+
+    document.addEventListener("mouseup", (event) => {
+      const curButtonChan = buttonsMap[event.button];
+      if(curButtonChan>-1) this.chans[curButtonChan] = 0;
+    });
+
+    // Handle touch events
+    document.addEventListener("touchstart", (event) => {
+      const curButtonChan = buttonsMap[0]; // Treat touch as left click
+      if(curButtonChan>-1) this.chans[curButtonChan] = 1;
+    });
+
+    document.addEventListener("touchend", (event) => {
+      const curButtonChan = buttonsMap[0]; // Treat touch as left click
+      if(curButtonChan>-1) this.chans[curButtonChan] = 0;
+    });
+
+
+
+  }
+
+  // Helper methods for pointer movement
+  handlePointerMove(e, chanIndex, documentWidth) {
+    let v = (e.clientX/documentWidth-0.5)*2;
+    if (this.par.output == 2) v = e.clientX;
+    this.chans[chanIndex] = v;
+  }
+
+  handlePointerMoveY(e, chanIndex, documentHeight, aspect) {
+    let v = documentHeight-e.clientY;
+    if (this.par.output == 0) v = (v/documentHeight-0.5)*2;
+    if (this.par.output == 1) v = (v/documentHeight-0.5)/aspect*2;
+    if (this.par.output == 2) v = v;
+    this.chans[chanIndex] = v;
+  }
+
+  
+
+  setVals(chans){
+    this.chans = chans;
+    let k = 0;
+    for (const [key, value] of Object.entries(this.par)) {
+      this.parMap[key] = k;
+      k+=1;
+    }
+   
+  }
+}
+
+
+
+
+//=============================== SpeedCHOP ========================
+class SpeedCHOP extends CHOP{
+  constructor(name, time, gl) {
+    super(name, time, gl, true, ['Source','Reset'], ['Output']);
+    this.minInputs = 1;
+    this.maxInputs = 2;
+
+    //pars:
+    this.par.order = 0; //0. First, 1. Second, 2. Third
+    this.par.constant1 = 0.0;
+    this.par.constant2 = 0.0;
+    this.par.constant3 = 0.0;
+    this.par.limittype = 0; //0. Off, 1. Clamp, 2. Loop, 3. Zigzag
+    this.par.min = 0.0;
+    this.par.max = 1.0;
+    this.par.speedsamples = 0;
+    this.par.resetcondition = 1; //0. Off to On, 1. While On, 2. On to Off, 3. While Off
+    this.par.resetvalue = 0.0;
+    this.par.reset = 0;
+    this.par.resetonstart = 1;
+
+
+    //vars:
+    this.prev = 0;
+
+  }
+  
+  clampSpeed(x,a,b){
+    if(x>b)return b*1;
+    if(x<a)return a*1;
+    return x*1;
+  }
+
+
+  loopSpeed(x,a,b){
+    if(x>b){
+      while(x>b) x = x-b+a;
+    }
+    if(x<a){
+      while(x<a) x = b-(x-a);
+    }
+    return x;
+  }
+
+  doInit(){
+    this.reset();
+    
+  }
+
+  reset(){
+    for (let i = 0; i<this.chans.length; i++)this.chans[i] = this.par.resetvalue*1;
+  }
+
+  updateDo(){ 
+
+      
+      for (let i = 0; i<this.chans.length; i++){
+        this.chans[i] += this.time.deltas*this.inputs[0].chans[i];
+        if (this.par.limittype == 1) this.chans[i] = this.clampSpeed(this.chans[i]*1,this.par.min, this.par.max);
+        if (this.par.limittype == 2) this.chans[i] = this.loopSpeed(this.chans[i]*1,this.par.min, this.par.max);
+
+        if (this.par.reset > 0) this.reset();
+
+
+      }
+
+      //reset on 2nd input
+      if (this.inputs[1] !== undefined){
+        
+        //offToOn
+        if (this.par.resetcondition == 0 && this.prev <= 0 && this.inputs[1].chans[0]*1>0){
+          this.reset()
+        }
+
+        //whileOn
+        if (this.par.resetcondition == 1 && this.inputs[1].chans[0]*1>0){
+          this.reset()
+        }
+
+         //onToOff
+        if (this.par.resetcondition == 2 && this.prev > 0 && this.inputs[1].chans[0]*1<=0){
+          this.reset()
+        }
+
+        //whileOff
+        if (this.par.resetcondition == 3 && this.inputs[1].chans[0]*1<=0){
+          this.reset()
+        }
+        this.prev = this.inputs[1].chans[0]*1;
+      }
+      
+     
+  }
+
+  setVals(chans){
+    this.chans = chans.slice();
+    // if (this.inputs[1] === undefined) this.inputs[1] = 0;
+  }
+}
+
+
+
+
+
+
+
+//=============================== FilterCHOP ========================
+class FilterCHOP extends CHOP{
+  constructor(name, time, gl) {
+    super(name, time, gl, true, ['Source','Reset'], ['Output']);
+    this.minInputs = 1;
+    this.maxInputs = 2;
+
+    //pars:
+    this.par.type = 0; //0. Gaussian, 1. Left Half Gaussian, 2. Box, 3. Left Half Box, 4. Edge Detect, 5. Sharpen, 6. De-spike, 7. Ramp Preserve, 8. One Euro
+    this.par.effect = 1.0;
+    this.par.width = 1.0;
+    this.par.widthunit = 2; //0. I, 1. F, 2. S, 3. %
+    this.par.spike = 0.10000000149011612;
+    this.par.ramptolerance = 4.0;
+    this.par.ramprate = 60.0;
+    this.par.passes = 1;
+    this.par.filterpersample = 0;
+    this.par.cutoff = 1.0;
+    this.par.speedcoeff = 2.0;
+    this.par.slopecutoff = 1.0;
+    this.par.reset = 0;
+    this.prevWidth = this.par.width*1;
+
+
+    //vars:
+    this.filterWindow = []; //0. end, 1. attak,2.decay, 3.sustain, 4.release
+    this.filterSum = 0;
+
+  }
+  
+
+  updateDo(){ 
+      if(this.prevWidth != this.par.width) this.setVals(this.chans.slice());
+      this.chans = this.inputs[0].chans.slice();
+      for (let i = 0; i<this.chans.length; i++){
+        this.windows[i].push(this.chans[i]*1);
+        this.windows[i].shift();
+        // console.log(this.windows[i]);
+        let val = 0;
+        for (let j = 0; j<this.windows[i].length; j++){
+          val += this.windows[i][j]*this.filter[j];
+        }
+        
+        this.chans[i] = val/this.filterSum;
+      }
+
+
+      //this.prev = this.inputs[0].chans.slice();
+     
+  }
+
+  setVals(chans){
+    let filterWidth = Math.max(Math.floor(this.par.width*this.time.rate),1);
+
+    this.chans = chans.slice();
+    this.windows = Array(this.chans.length);
+    for (let i = 0; i<this.chans.length; i++){
+      this.windows[i] = Array(filterWidth);
+       for (let j = 0; j<this.windows[i].length; j++){
+        this.windows[i][j] = this.chans[i];
+       }
+    }
+    this.filter = Array(this.windows[0].length);
+    if (this.filter.length < 2) this.filter = [1];
+    else{
+      for (let i = 0; i<this.filter.length; i++){
+          this.filter[i] = Math.sin(i/(this.filter.length-1)*Math.PI);
+          this.filter[i] = Math.pow(this.filter[i],4);
+         }
+    }
+    var filterSum = 0;
+    this.filter.forEach(function(num) { filterSum += num });
+    this.filterSum = filterSum;
+    
+    this.prevWidth = this.par.width*1;
+  }
+}
+
+
+//=============================== SPRITES =====================
+class ConvertedGLSLs_circles extends OP{
+  constructor(name, time, gl) {
+    super(name, time, gl, true, ['Source'], ['Output']);
     this.gl = gl;
-    this.family = "TOP";
-    this.par.outputresolution = 10; //Output Resolution:  0: Use Input  1: Eighth  2: Quarter  3: Half  4: 2X  5: 4X  6: 8X  7: Fit Resolution  8: Limit Resolution  9: Custom Resolution  10: Parent Panel Size
-    this.par.resolutionw = 1000; //Resolution
-    this.par.resolutionh = 1000; //Resolution
+    this.family = 'TOP';
+    this.par.outputresolution = 9;  //Output Resolution:  0: Use Input  1: Eighth  2: Quarter  3: Half  4: 2X  5: 4X  6: 8X  7: Fit Resolution  8: Limit Resolution  9: Custom Resolution  10: Parent Panel Size
+    this.par.resolutionw = 1000;  //Resolution
+    this.par.resolutionh = 1000;  //Resolution
     this.width = 1000;
     this.height = 1000;
     this.fixedResInput = 0;
     this.minInputs = 0;
-    this.maxInputs = 2;
+    this.maxInputs = 1;
 
-    // Replace sprite data properties with new structure
     this.sprites = [];
     this.spriteData = null;
-    this.vao = null; // Add VAO property
     this.numSprites = 0;
+    this.vao = null;  // Add VAO property
 
-    this.par.Scale;
-    this.par.Posx;
-    this.par.Posy;
-    this.par.Avascale = 1;
-  }
-
-  //WEBGL 2.0
-  vertexShader = `#version 300 es
+    this.vertexShader =`#version 300 es
   in vec2 position;
   in vec3 instancePosition; // x, y, size
   in vec4 instanceTexCoords; // startU, startV, endU, endV
   in vec3 instanceColor;    // r, g, b
-  
-  uniform vec2 resolution;
-
   out vec2 vUV;
   out vec4 vTexCoords;
   out vec3 vColor;
-
-
   void main() {
-    float size = instancePosition.z;
-    vec2 aspect = vec2(1.,resolution.x/resolution.y);
-    vec2 pos = position * size * aspect + instancePosition.xy * 2.0 - 1.0;
+    vec2 pos = position * instancePosition.z + instancePosition.xy * 2.0 - 1.0;
     gl_Position = vec4(pos, 0.0, 1.0);
     vUV = position * 0.5 + 0.5;
     vTexCoords = instanceTexCoords;
     vColor = instanceColor;
   }`;
-
-  fragmentShader = `#version 300 es
+  
+  this.fragmentShader = `#version 300 es
   precision highp float;
   in vec2 vUV;
   in vec4 vTexCoords;
   in vec3 vColor;
   out vec4 fragColor;
-  uniform sampler2D sTD2DInputs[2];
+  uniform sampler2D sTD2DInputs[1];
   @TDUniforms@
   
 void main()
 {  
     float dist = length(vUV - vec2(0.5));
     float alpha = smoothstep(0.5, 0.48, dist);
-    vec2 texCoord = mix(vTexCoords.xy, vTexCoords.zw, vUV);
-    vec4 c = texture(sTD2DInputs[0], texCoord)*texture(sTD2DInputs[1], vUV.st);
-    fragColor = vec4(c.rgb, c.a);
+    // vec2 texCoord = mix(vTexCoords.xy, vTexCoords.zw, vUV);
+    vec4 c = texture(sTD2DInputs[0], vUV.st);
+    fragColor = vec4(vColor*c.rgb, c.a);
 }`;
 
-  program;
-  uniforms = [];
-  output;
-  resX;
-  resY;
-  buffer;
-  toScreen = false;
-
-  appendUniform(name, type, vals) {
-    var c = { name: name, type: type, vals: vals };
-    this.uniforms.push(c);
+  this.program;
+  this.uniforms = [];
+  this.output;
+  this.resX;
+  this.resY;
+  this.buffer;
+  this.toScreen = false;
   }
 
-  createTarget(width, height, type) {
+  appendUniform(name, type, vals){
+    var c = {'name':name, 'type':type, 'vals': vals};
+    let existingUniform = this.uniforms.find(u => u.name === name);
+    if (existingUniform) {
+        existingUniform.vals = vals;
+    } else {
+        this.uniforms.push(c);
+    }
+  }
+
+
+  createTarget( width, height, type ) {
     var target = {};
     var gl = this.gl;
     target.framebuffer = gl.createFramebuffer();
     target.renderbuffer = gl.createRenderbuffer();
     target.texture = gl.createTexture();
-    gl.bindTexture(gl.TEXTURE_2D, target.texture);
-    gl.texImage2D(
-      gl.TEXTURE_2D,
-      0,
-      gl.RGBA,
-      width,
-      height,
-      0,
-      gl.RGBA,
-      type,
-      null
-    );
-    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE);
-    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
-    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.LINEAR);
-    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR);
-    gl.bindFramebuffer(gl.FRAMEBUFFER, target.framebuffer);
-    gl.framebufferTexture2D(
-      gl.FRAMEBUFFER,
-      gl.COLOR_ATTACHMENT0,
-      gl.TEXTURE_2D,
-      target.texture,
-      0
-    );
-    gl.bindTexture(gl.TEXTURE_2D, null);
-    gl.bindRenderbuffer(gl.RENDERBUFFER, null);
-    gl.bindFramebuffer(gl.FRAMEBUFFER, null);
+    gl.bindTexture( gl.TEXTURE_2D, target.texture );
+    gl.texImage2D( gl.TEXTURE_2D, 0, gl.RGBA, width, height, 0, gl.RGBA, type, null );
+    gl.texParameteri( gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE );
+    gl.texParameteri( gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE );
+    gl.texParameteri( gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.LINEAR );
+    gl.texParameteri( gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR);
+    gl.bindFramebuffer( gl.FRAMEBUFFER, target.framebuffer );
+    gl.framebufferTexture2D( gl.FRAMEBUFFER, gl.COLOR_ATTACHMENT0, gl.TEXTURE_2D, target.texture, 0 );
+    gl.bindTexture( gl.TEXTURE_2D, null );
+    gl.bindRenderbuffer( gl.RENDERBUFFER, null );
+    gl.bindFramebuffer( gl.FRAMEBUFFER, null);
     return target;
+
   }
 
-  createShader(src, type) {
-    var shader = this.gl.createShader(type);
-    this.gl.shaderSource(shader, src);
-    this.gl.compileShader(shader);
+  createShader( src, type ) {
+    var shader = this.gl.createShader( type );
+    this.gl.shaderSource( shader, src );
+    this.gl.compileShader( shader );
     if (!this.gl.getShaderParameter(shader, this.gl.COMPILE_STATUS)) {
-      console.error(
-        "Shader compile error:",
-        this.path,
-        this.gl.getShaderInfoLog(shader)
-      );
-      const shaderSourceLines = src.split("\n");
-      shaderSourceLines.forEach((line, index) => {
-        console.log(`${index + 1}: ${line}`);
-      });
-      this.gl.deleteShader(shader);
-      return null;
+        console.error('Shader compile error:', this.path, this.gl.getShaderInfoLog(shader));
+        const shaderSourceLines = src.split("\n");
+        shaderSourceLines.forEach((line, index) => {
+          console.log(`${index + 1}: ${line}`);
+        });
+        this.gl.deleteShader(shader);
+        return null;
     }
     // console.log(this.name, src);
     return shader;
   }
 
-  cacheUniformLocation(program, label) {
-    if (program.uniformsCache === undefined) {
+  cacheUniformLocation( program, label ) {
+    if ( program.uniformsCache === undefined ) {
       program.uniformsCache = {};
     }
-    program.uniformsCache[label] = this.gl.getUniformLocation(program, label);
+    program.uniformsCache[ label ] = this.gl.getUniformLocation( program, label );
   }
 
-  setResolution() {
-    // console.log('=====>> RESIZE',this.name)
-    if (this.par.outputresolution == 0) {
-      //USE INPUT
-      if (this.inputs.length == 0) {
+  setResolution(){
+    if (this.par.outputresolution == 0){ //USE INPUT
+      if(this.inputs.length == 0){
         this.width = this.par.resolutionw;
         this.height = this.par.resolutionh;
-      } else {
+      }
+      else{
         const inOp = this.inputs[this.fixedResInput];
         // console.log('=========>> RES FROM INPUT',inOp.name)
         this.width = inOp.width;
         this.height = inOp.height;
       }
     }
-    if (this.par.outputresolution == 9) {
+    if (this.par.outputresolution == 9){
       this.width = this.par.resolutionw;
       this.height = this.par.resolutionh;
     }
 
-    if (this.par.outputresolution == 10) {
+    if (this.par.outputresolution == 10){
       this.width = this.gl.drawingBufferWidth;
       this.height = this.gl.drawingBufferHeight;
     }
 
-    this.appendUniform("resolution", "2f", [this.width, this.height]);
-    this.appendUniform("viewportXY", "2f", [this.par.Posx, this.par.Posy]);
-    this.appendUniform("viewportScale", "1f", [this.par.Scale]);
-    // console.log('---->SET RESOLUTION:',this.name, this.width, this.height, this.fixedResInput);
-
+    this.appendUniform('resolution','2f',[this.width,this.height]);
+    
     let N = this.inputs.length;
-    if (N > 0) {
-      for (let i = 0; i < N; i++) {
-        this.appendUniform(`uTD2DInfos[${i}].res`, "4f", [
-          1 / this.inputs[i].width,
-          1 / this.inputs[i].height,
-          this.inputs[i].width,
-          this.inputs[i].height,
-        ]);
-        this.appendUniform(`uTD2DInfos[${i}].depth`, "4f", [1, 1, 1, 1]);
-        // console.log(this.name,'TO UNIFORMS->', this.inputs[i].width,this.inputs[i].height);
+    if (N>0){
+      for (let i=0; i<N; i++){
+        this.appendUniform(`uTD2DInfos[${i}].res`,'4f', [1./this.inputs[i].width, 1./this.inputs[i].height, this.inputs[i].width, this.inputs[i].height]);
+        this.appendUniform(`uTD2DInfos[${i}].depth`,'4f',[1.,1.,1.,1.]);
+        
       }
-      // console.log(this.name, 'RES UNIFORM->', this.width,this.height);
+      
     }
   }
 
-  insertTDUniforms() {
-    let example = "";
+  insertTDUniforms(){
+    let example = '';
     let texInfoArray = [];
     let N = this.inputs.length;
 
-    if (N > 0) {
-      for (let i = 0; i < N; i++) {
-        texInfoArray.push(
-          `TDTexInfo(vec4(1./${Math.round(
-            this.inputs[i].width
-          )}., 1./${Math.round(this.inputs[i].height)}., ${Math.round(
-            this.inputs[i].width
-          )}., ${Math.round(this.inputs[i].height)}.), vec4(1.))`
-        );
+    if (N>0){
+      for (let i=0; i<N; i++){
+        texInfoArray.push(`TDTexInfo(vec4(1./${Math.round(this.inputs[i].width)}., 1./${Math.round(this.inputs[i].height)}., ${Math.round(this.inputs[i].width)}., ${Math.round(this.inputs[i].height)}.), vec4(1.))`)
       }
       example = `
   struct TDTexInfo {
@@ -2440,9 +2096,9 @@ void main()
 
   uniform TDTexInfo uTD2DInfos[${N}];
   const int TD_NUM_2D_INPUTS = ${N};`;
-    }
-
-    this.fragmentShader = this.fragmentShader.replace("@TDUniforms@", example);
+  }
+  
+  this.fragmentShader = this.fragmentShader.replace('@TDUniforms@',example);
   }
 
   disposeResources() {
@@ -2476,113 +2132,94 @@ void main()
 
     // Delete output target resources (framebuffer, renderbuffer, texture)
     if (this.output) {
-      if (this.output.framebuffer)
-        gl.deleteFramebuffer(this.output.framebuffer);
-      if (this.output.renderbuffer)
-        gl.deleteRenderbuffer(this.output.renderbuffer);
+      if (this.output.framebuffer) gl.deleteFramebuffer(this.output.framebuffer);
+      if (this.output.renderbuffer) gl.deleteRenderbuffer(this.output.renderbuffer);
       if (this.output.texture) gl.deleteTexture(this.output.texture);
       this.output = null;
     }
-
+    
     // Add instance buffer cleanup
     if (this.instanceBuffer) {
-      gl.deleteBuffer(this.instanceBuffer);
-      this.instanceBuffer = null;
+        gl.deleteBuffer(this.instanceBuffer);
+        this.instanceBuffer = null;
     }
 
     // If you have any additional resources, delete them here.
   }
 
-  doInit() {
+  doInit(){
     // console.log('&&& DO INIT TOP');
-    this.disposeResources();
+    // this.disposeResources();
     this.setResolution();
     this.insertTDUniforms();
     this.compile();
+    // console.log(this.name, ' shader:\n',this.fragmentShader);
   }
-  onResize() {}
+  
+  onResize(){
+  }
 
-  resize() {
-    for (let j = 0; j < this.inputs.length; j++) {
+  resize(){
+    for (let j = 0; j< this.inputs.length; j++) {
       this.inputs[j].resize();
     }
 
     this.setResolution();
-    try {
+    try{
       this.gl.useProgram(this.program);
 
       //RESOLUTION RELATED UNIFORMS ===============
-      if (
-        this.program.uniformsCache &&
-        this.program.uniformsCache["resolution"]
-      ) {
-        this.gl.uniform2f(
-          this.program.uniformsCache["resolution"],
-          this.width,
-          this.height
-        );
+      if(this.program.uniformsCache && this.program.uniformsCache['resolution']) {
+        this.gl.uniform2f(this.program.uniformsCache['resolution'], this.width, this.height);
       }
       let N = this.inputs.length;
-      if (N > 0) {
-        for (let i = 0; i < N; i++) {
-          this.gl.uniform4f(
-            this.program.uniformsCache[`uTD2DInfos[${i}].res`],
-            1 / this.inputs[i].width,
-            1 / this.inputs[i].height,
-            this.inputs[i].width,
-            this.inputs[i].height
-          );
-          this.gl.uniform4f(
-            this.program.uniformsCache[`uTD2DInfos[${i}].depth`],
-            1,
-            1,
-            1,
-            1
-          );
+      if (N>0){
+        for (let i=0; i<N; i++){
+          this.gl.uniform4f(this.program.uniformsCache[`uTD2DInfos[${i}].res`],1./this.inputs[i].width, 1./this.inputs[i].height, this.inputs[i].width, this.inputs[i].height);
+          this.gl.uniform4f(this.program.uniformsCache[`uTD2DInfos[${i}].depth`],1.,1.,1.,1.);
         }
       }
       this.gl.useProgram(null);
-      this.output = this.createTarget(
-        this.width,
-        this.height,
-        this.gl.UNSIGNED_BYTE
-      );
-    } catch (e) {
-      console.error("catched: ", e);
+      this.output = this.createTarget(this.width, this.height, this.gl.UNSIGNED_BYTE);
+      }
+    catch (e) {
+      console.error('catched: ',e);
     }
 
     this.onResize();
   }
 
-  //======================COMPILE ================
-  compile() {
-    const gl = this.gl;
 
+
+  compile(){
+    const gl = this.gl;
+    
     // Create and bind VAO
     this.vao = gl.createVertexArray();
     gl.bindVertexArray(this.vao);
-
+    
     // Create a buffer for the quad vertices
-    const quadVertices = new Float32Array([
-      -1, -1, 1, -1, -1, 1, -1, 1, 1, -1, 1, 1,
-    ]);
+    const quadVertices = new Float32Array([-1, -1,1, -1,-1, 1,-1, 1,1, -1,1, 1]);
+
 
     this.updateSpriteBuffer();
 
-    this.buffer = gl.createBuffer();
-    gl.bindBuffer(gl.ARRAY_BUFFER, this.buffer);
-    gl.bufferData(gl.ARRAY_BUFFER, quadVertices, gl.STATIC_DRAW);
+    this.buffer = this.gl.createBuffer();
+    this.gl.bindBuffer(gl.ARRAY_BUFFER, this.buffer);
+    this.gl.bufferData(gl.ARRAY_BUFFER, quadVertices, gl.STATIC_DRAW);
 
     if (!this.instanceBuffer) {
-      this.instanceBuffer = gl.createBuffer();
+        this.instanceBuffer = gl.createBuffer();
     }
     gl.bindBuffer(gl.ARRAY_BUFFER, this.instanceBuffer);
     gl.bufferData(gl.ARRAY_BUFFER, this.spriteData, gl.DYNAMIC_DRAW);
 
+
+
     // Create and link program
     this.program = gl.createProgram();
-    this.vs = this.createShader(this.vertexShader, gl.VERTEX_SHADER);
-    this.fs = this.createShader(this.fragmentShader, gl.FRAGMENT_SHADER);
+    this.vs = this.createShader(this.vertexShader, this.gl.VERTEX_SHADER);
+    this.fs = this.createShader(this.fragmentShader, this.gl.FRAGMENT_SHADER);
     if (this.vs == null || this.fs == null) return null;
 
     gl.attachShader(this.program, this.vs);
@@ -2590,287 +2227,184 @@ void main()
     gl.deleteShader(this.vs);
     gl.deleteShader(this.fs);
     gl.linkProgram(this.program);
-    if (!gl.getProgramParameter(this.program, gl.LINK_STATUS)) {
-      var error = gl.getProgramInfoLog(this.program);
-      console.log(this.name, "fragmentShader:");
+    if ( !gl.getProgramParameter( this.program, this.gl.LINK_STATUS ) ) {
+      var error = gl.getProgramInfoLog( this.program );
+      console.log(this.name, 'fragmentShader:');
       console.log(this.fragmentShader);
       console.log(this.vertexShader);
-      console.error(error);
-      console.error(
-        "VALIDATE_STATUS: " +
-          gl.getProgramParameter(this.program, gl.VALIDATE_STATUS),
-        "ERROR: " + gl.getError()
-      );
-      let err = gl.getShaderInfoLog(this.fs);
-      err = err.split("ERROR:")[1].split(":")[1];
-      console.error(
-        this.name +
-          "  " +
-          gl.getShaderInfoLog(this.fs) +
-          "\n" +
-          err +
-          "\n" +
-          this.fragmentShader.split("\n")[err - 1]
-      );
-
+      console.error( error );
+      console.error( 'VALIDATE_STATUS: ' + this.gl.getProgramParameter( this.program, this.gl.VALIDATE_STATUS ), 'ERROR: ' + this.gl.getError() );
+      let err = this.gl.getShaderInfoLog(this.fs);
+      err = err.split('ERROR:')[1].split(':')[1];
+      console.error(this.name+'  '+this.gl.getShaderInfoLog(this.fs)+'\n'+err+'\n'+this.fragmentShader.split('\n')[err-1]);
+      
       return;
     }
 
     // Set up attributes
-    gl.useProgram(this.program);
-
+    this.gl.useProgram(this.program);
+    
     // Position attribute (vertices)
-    this.screenVertexPosition = gl.getAttribLocation(this.program, "position");
+    this.screenVertexPosition = this.gl.getAttribLocation(this.program, "position");
     gl.enableVertexAttribArray(this.screenVertexPosition);
     gl.bindBuffer(gl.ARRAY_BUFFER, this.buffer);
     gl.vertexAttribPointer(this.screenVertexPosition, 2, gl.FLOAT, false, 0, 0);
-
+    
     // Instance attributes
-    const instancePosLoc = gl.getAttribLocation(
-      this.program,
-      "instancePosition"
-    );
-    const instanceTexCoordsLoc = gl.getAttribLocation(
-      this.program,
-      "instanceTexCoords"
-    );
-    const instanceColorLoc = gl.getAttribLocation(
-      this.program,
-      "instanceColor"
-    );
-
+    const instancePosLoc = gl.getAttribLocation(this.program, "instancePosition");
+    const instanceTexCoordsLoc = gl.getAttribLocation(this.program, "instanceTexCoords");
+    const instanceColorLoc = gl.getAttribLocation(this.program, "instanceColor");
+    
     gl.bindBuffer(gl.ARRAY_BUFFER, this.instanceBuffer);
-
+    
     // Position attribute (x, y, size)
     gl.enableVertexAttribArray(instancePosLoc);
     gl.vertexAttribPointer(instancePosLoc, 3, gl.FLOAT, false, 40, 0);
     gl.vertexAttribDivisor(instancePosLoc, 1);
-
+    
     // Texture coordinates attribute (startU, startV, endU, endV)
     gl.enableVertexAttribArray(instanceTexCoordsLoc);
     gl.vertexAttribPointer(instanceTexCoordsLoc, 4, gl.FLOAT, false, 40, 12);
     gl.vertexAttribDivisor(instanceTexCoordsLoc, 1);
-
+    
     // Color attribute (r, g, b)
     gl.enableVertexAttribArray(instanceColorLoc);
     gl.vertexAttribPointer(instanceColorLoc, 3, gl.FLOAT, false, 40, 28);
     gl.vertexAttribDivisor(instanceColorLoc, 1);
 
     //UNIFORMS
-    for (var key in this.uniforms) {
-      this.cacheUniformLocation(this.program, this.uniforms[key]["name"]);
-    }
+    for (var key in this.uniforms){
+      this.cacheUniformLocation( this.program, this.uniforms[key]['name']);
+    };
+
 
     if (this.inputs.length > 0) {
-      this.cacheUniformLocation(this.program, "sTD2DInputs[0]");
+        this.cacheUniformLocation(this.program, 'sTD2DInputs[0]');
     }
 
-    // Load program0 into GPU
-    gl.useProgram(this.program);
-    this.screenVertexPosition = gl.getAttribLocation(this.program, "position");
-    gl.enableVertexAttribArray(this.screenVertexPosition);
+     // Load program0 into GPU
+    this.gl.useProgram( this.program );
+    this.screenVertexPosition = this.gl.getAttribLocation(this.program, "position");
+    gl.enableVertexAttribArray( this.screenVertexPosition );
+
 
     //UNIFORMS SET VALS
-    for (var key in this.uniforms) {
-      if (this.uniforms[key]["type"] == "1f")
-        gl.uniform1f(
-          this.program.uniformsCache[this.uniforms[key]["name"]],
-          this.uniforms[key]["vals"][0]
-        );
-      if (this.uniforms[key]["type"] == "2f")
-        gl.uniform2f(
-          this.program.uniformsCache[this.uniforms[key]["name"]],
-          this.uniforms[key]["vals"][0],
-          this.uniforms[key]["vals"][1]
-        );
-      if (this.uniforms[key]["type"] == "3f")
-        gl.uniform3f(
-          this.program.uniformsCache[this.uniforms[key]["name"]],
-          this.uniforms[key]["vals"][0],
-          this.uniforms[key]["vals"][1],
-          this.uniforms[key]["vals"][2]
-        );
-      if (this.uniforms[key]["type"] == "4f")
-        gl.uniform4f(
-          this.program.uniformsCache[this.uniforms[key]["name"]],
-          this.uniforms[key]["vals"][0],
-          this.uniforms[key]["vals"][1],
-          this.uniforms[key]["vals"][2],
-          this.uniforms[key]["vals"][3]
-        );
-      if (this.uniforms[key]["name"] == "resolution")
-        gl.uniform2f(
-          this.program.uniformsCache[this.uniforms[key]["name"]],
-          this.width,
-          this.height
-        );
-      if (this.uniforms[key]["name"] == "res")
-        gl.uniform2f(
-          this.program.uniformsCache[this.uniforms[key]["name"]],
-          this.width,
-          this.height
-        );
-    }
+    for (var key in this.uniforms){
+      if (this.uniforms[key]['type'] == '1f') this.gl.uniform1f(this.program.uniformsCache[this.uniforms[key]['name']], this.uniforms[key]['vals'][0] );
+      if (this.uniforms[key]['type'] == '2f') this.gl.uniform2f(this.program.uniformsCache[this.uniforms[key]['name']], this.uniforms[key]['vals'][0],this.uniforms[key]['vals'][1] );
+      if (this.uniforms[key]['type'] == '3f') this.gl.uniform3f(this.program.uniformsCache[this.uniforms[key]['name']], this.uniforms[key]['vals'][0],this.uniforms[key]['vals'][1],this.uniforms[key]['vals'][2] );
+      if (this.uniforms[key]['type'] == '4f') this.gl.uniform4f(this.program.uniformsCache[this.uniforms[key]['name']], this.uniforms[key]['vals'][0],this.uniforms[key]['vals'][1] ,this.uniforms[key]['vals'][2] ,this.uniforms[key]['vals'][3] );
+      if (this.uniforms[key]['name'] == 'resolution') this.gl.uniform2f(this.program.uniformsCache[this.uniforms[key]['name']], this.width, this.height );
+      if (this.uniforms[key]['name'] == 'res') this.gl.uniform2f(this.program.uniformsCache[this.uniforms[key]['name']], this.width, this.height );
+      
+    };
 
     //OUTPUT
-    this.output = this.createTarget(this.width, this.height, gl.UNSIGNED_BYTE);
+    this.output = this.createTarget( this.width, this.height, gl.UNSIGNED_BYTE );
     // this.output = this.createTarget( this.width, this.height, gl.FLOAT );
     gl.useProgram(null);
-    gl.bindVertexArray(null); // Unbind VAO
+    gl.bindVertexArray(null);
   }
 
-  //====================END COMPILE ===================
+  //================== END OF COMPILE ======================
 
-  setUniform1f(name, vals) {
-    this.gl.useProgram(this.program);
+  setUniform1f(name,vals){
+    gl.useProgram( this.program );
     this.gl.uniform1f(this.program.uniformsCache[name], vals[0]);
-    this.gl.useProgram(null);
+    gl.useProgram(null);
   }
 
-  setUniform2f(name, vals) {
-    this.gl.useProgram(this.program);
-    this.gl.uniform2f(this.program.uniformsCache[name], vals[0], vals[1]);
-    this.gl.useProgram(null);
+   setUniform2f(name,vals){
+    gl.useProgram( this.program );
+    this.gl.uniform2f(this.program.uniformsCache[name], vals[0],vals[1]);
+    gl.useProgram(null);
   }
 
-  setUniform3f(name, vals) {
-    this.gl.useProgram(this.program);
-    this.gl.uniform3f(
-      this.program.uniformsCache[name],
-      vals[0],
-      vals[1],
-      vals[2]
-    );
-    this.gl.useProgram(null);
+   setUniform3f(name,vals){
+    gl.useProgram( this.program );
+    this.gl.uniform3f(this.program.uniformsCache[name], vals[0],vals[1],vals[2]);
+    gl.useProgram(null);
   }
 
-  setUniform4f(name, vals) {
-    this.gl.useProgram(this.program);
-    this.gl.uniform4f(
-      this.program.uniformsCache[name],
-      vals[0],
-      vals[1],
-      vals[2],
-      vals[3]
-    );
-    this.gl.useProgram(null);
+  setUniform4f(name,vals){
+    gl.useProgram( this.program );
+    this.gl.uniform4f(this.program.uniformsCache[name], vals[0],vals[1],vals[2],vals[3]);
+    gl.useProgram(null);
   }
+
 
   checkAvatars() {
     const mpOp = this.par.Multiplayerop[0];
     const avaOp = this.par.Avaop[0];
 
     if (!mpOp || !avaOp || !mpOp.players || !avaOp.loadedImages) return;
+
     const currentPlayerIds = Object.keys(mpOp.players);
-
-    const playersChanged =
-      !this._lastPlayerIds ||
-      this._lastPlayerIds.length !== currentPlayerIds.length ||
-      !this._lastPlayerIds.every((id) => currentPlayerIds.includes(id));
-
-    if (playersChanged) {
-      this.sprites = [];
-
-      for (const playerId in mpOp.players) {
-        const player = mpOp.players[playerId];
-        const id = player.id; // Default avatar ID if none specified
-        const avatarData = avaOp.loadedImages.get(id);
-
-        if (avatarData) {
-          console.log("avatarData", avatarData);
-          const sprite = {
-            id: playerId,
-            x: (player.x - this.par.Posx) / 1000,
-            y: (player.y - this.par.Posy) / 1000,
-            size: player.size,
-            startU: avatarData.uvX,
-            startV: avatarData.uvY,
-            endU: avatarData.uvX + avatarData.uvSize,
-            endV: avatarData.uvY + avatarData.uvSize,
-            r: 1.0,
-            g: 1.0,
-            b: 1.0,
-          };
-          this.sprites.push(sprite);
+    
+    // Check if players changed by comparing with previous state
+    const playersChanged = !this._lastPlayerIds || 
+        this._lastPlayerIds.length !== currentPlayerIds.length ||
+        !this._lastPlayerIds.every(id => currentPlayerIds.includes(id));
+    
+     if (playersChanged) {
+        
+        this.sprites = [];
+        
+        // Create sprites for each player
+        for (const playerId in mpOp.players) {
+            const player = mpOp.players[playerId];
+            const id = player.id; // Default avatar ID if none specified
+            const avatarData = avaOp.loadedImages.get(id);
+            
+            if (avatarData) {
+              console.log('avatarData', avatarData);
+                const sprite = {
+                    id: playerId,
+                    x: player.x/1000,
+                    y: player.y/1000,
+                    size: player.size/1000,
+                    startU: avatarData.uvX,
+                    startV: avatarData.uvY,
+                    endU: avatarData.uvX + avatarData.uvSize,
+                    endV: avatarData.uvY + avatarData.uvSize,
+                    r: player.r,
+                    g: player.g,
+                    b: player.b
+                };
+                this.sprites.push(sprite);
+            }
         }
-      }
-
-      this.updateSpriteBuffer();
-      this._lastPlayerIds = currentPlayerIds;
+        
+        // Update the sprite buffer with new data
+        this.updateSpriteBuffer();
+        
+        // Store current player IDs for next comparison
+        this._lastPlayerIds = currentPlayerIds;
     }
   }
 
-  updateDo() {
+  updateDo(){ 
     this.checkAvatars();
     this.render();
   }
 
-  render() {
-    var gl = this.gl;
-
-    this.updateSpritePositions();
-    gl.useProgram(this.program);
-    gl.bindVertexArray(this.vao); // Bind VAO before rendering
-
-    //INPUT UNIFORMS
-
-    if (this.inputs.length > 0) {
-      let samplerIndices = new Int32Array(this.inputs.length);
-      for (let i = 0; i < this.inputs.length; i++) {
-        samplerIndices[i] = i;
-        gl.activeTexture(gl.TEXTURE0 + i);
-        gl.bindTexture(gl.TEXTURE_2D, this.inputs[i].output.texture);
-        gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE);
-        gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
-        gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR);
-        gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.LINEAR);
-      }
-      gl.uniform1iv(
-        this.program.uniformsCache["sTD2DInputs[0]"],
-        samplerIndices
-      );
-    }
-
-    //OUTPUT
-    if (!this.toScreen)
-      gl.bindFramebuffer(gl.FRAMEBUFFER, this.output.framebuffer);
-    else gl.bindFramebuffer(gl.FRAMEBUFFER, null);
-
-    gl.viewport(0, 0, this.width, this.height);
-    gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
-    gl.drawArraysInstanced(gl.TRIANGLES, 0, 6, this.numSprites);
-
-    gl.bindVertexArray(null); // Unbind VAO after rendering
-    gl.useProgram(null);
-  }
-
   updateSpritePositions() {
-    const orthowidthW = this.width / this.par.Scale;
-    const orthowidthH = this.height / this.par.Scale;
     const mpOp = this.par.Multiplayerop[0];
     if (!mpOp || !mpOp.players) return;
 
-    // Get array of player IDs
     const playerIds = Object.keys(mpOp.players);
-
-    // Update positions in this.spriteData array
+    
     for (let i = 0; i < this.numSprites; i++) {
-      const playerId = this.sprites[i].id;
-      if (!playerId) continue;
-
-      const player = mpOp.players[playerId];
-      const offset = i * 10;
-
-      //=============== UPDATE PLAYERS POS:
-      this.spriteData[offset + 0] =
-        (player.x - this.par.Posx) / orthowidthW + 0.5;
-      this.spriteData[offset + 1] =
-        (player.y - this.par.Posy) / orthowidthH + 0.5;
-      this.spriteData[offset + 2] =
-        (player.size / this.width) * this.par.Scale * this.par.Avascale;
+        const playerId = this.sprites[i].id;
+        if (!playerId) continue;
+        
+        const player = mpOp.players[playerId];
+        const offset = i * 10;
+        
+        this.spriteData[offset] = player.x / 1000+0.5;     // x
+        this.spriteData[offset + 1] = player.y / 1000+0.5; // y
     }
-
-    // Update the instance buffer
+    
     const gl = this.gl;
     gl.bindBuffer(gl.ARRAY_BUFFER, this.instanceBuffer);
     gl.bufferData(gl.ARRAY_BUFFER, this.spriteData, gl.DYNAMIC_DRAW);
@@ -2878,85 +2412,408 @@ void main()
 
   updateSpriteBuffer() {
     const gl = this.gl;
-
-    // Calculate total number of sprites
     this.numSprites = this.sprites.length;
     this.spriteData = new Float32Array(this.numSprites * 10);
-
+    
     for (let i = 0; i < this.numSprites; i++) {
-      const sprite = this.sprites[i];
-      const offset = i * 10;
-
-      this.spriteData[offset + 0] = sprite.x;
-      this.spriteData[offset + 1] = sprite.y;
-      this.spriteData[offset + 2] = sprite.size * this.par.Avascale;
-      this.spriteData[offset + 3] = sprite.startU;
-      this.spriteData[offset + 4] = sprite.startV;
-      this.spriteData[offset + 5] = sprite.endU;
-      this.spriteData[offset + 6] = sprite.endV;
-      this.spriteData[offset + 7] = sprite.r;
-      this.spriteData[offset + 8] = sprite.g;
-      this.spriteData[offset + 9] = sprite.b;
+        const sprite = this.sprites[i];
+        const offset = i * 10;
+        
+        this.spriteData[offset + 0] = sprite.x;
+        this.spriteData[offset + 1] = sprite.y;
+        this.spriteData[offset + 2] = sprite.size;
+        this.spriteData[offset + 3] = sprite.startU;
+        this.spriteData[offset + 4] = sprite.startV;
+        this.spriteData[offset + 5] = sprite.endU;
+        this.spriteData[offset + 6] = sprite.endV;
+        this.spriteData[offset + 7] = sprite.r;
+        this.spriteData[offset + 8] = sprite.g;
+        this.spriteData[offset + 9] = sprite.b;
     }
-
-    // Update or create the buffer
+    
     if (!this.instanceBuffer) {
-      this.instanceBuffer = gl.createBuffer();
+        this.instanceBuffer = gl.createBuffer();
     }
     gl.bindBuffer(gl.ARRAY_BUFFER, this.instanceBuffer);
     gl.bufferData(gl.ARRAY_BUFFER, this.spriteData, gl.DYNAMIC_DRAW);
   }
 
-  //=================== UI ==========================
+  render(){
+    const gl = this.gl;
+    gl.useProgram(this.program);
+    gl.bindVertexArray(this.vao);  // Bind VAO before rendering
+    this.updateSpritePositions();
 
-  updateViewerCoord(viewport) {
+    //INPUT UNIFORMS
+    gl.useProgram(this.program);
+    if (this.inputs.length > 0){
+      let samplerIndices = new Int32Array(this.inputs.length);
+      for (let i = 0; i < this.inputs.length; i++){
+          samplerIndices[i] = i;
+          gl.activeTexture( gl.TEXTURE0 + i );
+          gl.bindTexture( gl.TEXTURE_2D, this.inputs[i].output.texture );
+          gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE);
+          gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
+          gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR);
+          gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.LINEAR);
+      }
+      gl.uniform1iv(this.program.uniformsCache['sTD2DInputs[0]'], samplerIndices);
+    }
+
+    //OUTPUT
+    if(!this.toScreen) gl.bindFramebuffer(gl.FRAMEBUFFER, this.output.framebuffer);
+    else gl.bindFramebuffer(gl.FRAMEBUFFER, null);
+    
+    gl.viewport(0, 0, this.width, this.height);
+    gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
+    
+    // Draw instanced sprites
+    gl.drawArraysInstanced(gl.TRIANGLES, 0, 6, this.numSprites);
+    
+    gl.bindVertexArray(null);  // Unbind VAO after rendering
+    gl.useProgram(null);
+  }
+
+
+  
+
+  //======================= UI ======================
+
+  updateViewerCoord(viewport){
+
     let rect = this.opUI.texture.getBoundingClientRect();
-    this.u0 = rect.left / viewport.width;
-    this.u1 = rect.right / viewport.width;
-    this.v0 = 1 - rect.bottom / viewport.height;
-    this.v1 = 1 - rect.top / viewport.height;
+    this.u0 = rect.left/viewport.width;
+    this.u1 = rect.right/viewport.width;
+    this.v0 = 1-rect.bottom/viewport.height;
+    this.v1 = 1-rect.top/viewport.height;
   }
+  createUIbyClass(){
 
-  //UI
-  createUIbyClass() {
-    this.opUI.op.style.backgroundColor = "rgba(0, 0, 0, 0.1)";
+    this.opUI.op.style.backgroundColor =  'rgba(0, 0, 0, 0.1)';
 
-    this.opUI.texture = document.createElement("div");
-    this.opUI.texture.classList.add("texture");
+    this.opUI.texture = document.createElement('div');
+    this.opUI.texture.classList.add('texture');
     this.opUI.op.appendChild(this.opUI.texture);
-
-    this.opUI.name = document.createElement("div");
-    this.opUI.name.classList.add("topName");
+    
+    this.opUI.name = document.createElement('div');
+    this.opUI.name.classList.add('topName');
     this.opUI.op.appendChild(this.opUI.name);
-    this.opUI.name.textContent = this.name;
+    this.opUI.name.textContent = this.name
 
-    this.opUI.cook = document.createElement("div");
-    this.opUI.cook.classList.add("cook");
+    this.opUI.cook = document.createElement('div');
+    this.opUI.cook.classList.add('cook');
     this.opUI.op.appendChild(this.opUI.cook);
-    this.opUI.cook.textContent = "0000";
+    this.opUI.cook.textContent = '0000';
   }
 
-  updateUI() {
-    this.opUI.cook.textContent = ""; //(this.cook).toFixed(4);
+  updateUI(){
+    this.opUI.cook.textContent = '';//(this.cook).toFixed(4);
+    
+  }
+  
+
+}
+
+
+//=============================== ConvertedGLSLs_multiplayerCHOP ========================
+class ConvertedGLSLs_multiplayerCHOP extends CHOP{
+  constructor(name, time, gl) {
+    super(name, time, gl, true, [], ['Output']);
+    this.OPType = 'keyboardinCHOP';
+    this.minInputs = 0;
+    this.maxInputs = 0;
+    this.par.Posx = 0;
+    this.par.Posy = 0;
+    this.chans = [40,200,400,10000]; //default current player: size, speed, view, balance 
+
+
+  }
+
+  updateDo(){ 
+    this.processInput(this.par.Posx, this.par.Posy);
+    const now = Date.now();
+        const timeSinceUpdate = now - this.lastUpdateTime;
+        const interpolationFactor = Math.min(timeSinceUpdate / this.serverUpdateRate, 1);
+        
+        // Draw other players
+        for (let id in this.players) {
+            if (id === this.socket.id) continue; // Skip local player
+
+            const player = this.players[id];
+            const prevPos = this.previousPlayers[id];
+
+            if (prevPos) {
+                const dx = player.x - prevPos.x;
+                const dy = player.y - prevPos.y;
+                const velocityMagnitude = Math.sqrt(dx * dx + dy * dy);
+                const velocityThreshold = 0.1;
+
+                let predictedX = player.x;
+                let predictedY = player.y;
+
+                if (velocityMagnitude > velocityThreshold) {
+                    if (timeSinceUpdate > this.serverUpdateRate) {
+                        // Use extrapolation with raw coordinates
+                        const maxExtrapolationTime = 200;
+                        const extrapolationTime = Math.min(
+                            (timeSinceUpdate - this.serverUpdateRate) / this.serverUpdateRate,
+                            maxExtrapolationTime / this.serverUpdateRate
+                        );
+                        predictedX += dx * extrapolationTime;
+                        predictedY += dy * extrapolationTime;
+                    } else {
+                        // Use interpolation with raw coordinates
+                        predictedX = prevPos.x + dx * interpolationFactor;
+                        predictedY = prevPos.y + dy * interpolationFactor;
+                    }
+                    //NON INFINITE FIELD FOR NOW
+                    predictedX = (predictedX+500)%1000-500;
+                    predictedY = (predictedY+500)%1000-500;
+                }
+            }
+        }
+        // Update current player position in players object
+        if (this.socket && this.socket.id && this.players[this.socket.id]) {
+            this.players[this.socket.id].x = this.par.Posx;
+            this.players[this.socket.id].y = this.par.Posy;
+            const maxSpeed = this.players[this.socket.id].speed;
+            const maxSize = this.players[this.socket.id].size;
+            const maxViewport = this.players[this.socket.id].viewport_size;
+            const balance = this.players[this.socket.id].balance;
+            this.chans = [maxSize,maxSpeed,maxViewport,balance];
+            
+            const speedLimitOp = this.par.Speedlimitop[0];
+            speedLimitOp.par.min = -maxSpeed;
+            speedLimitOp.par.max = maxSpeed;
+
+
+            const viewportChop = this.par.Viewportchop[0];
+            viewportChop.par.Orthowidth = maxViewport;
+            
+        }
+        // this.chans[0] = Object.keys(this.players).length;
+
+  }
+
+
+  doInit(){
+    this.chans = [40,200,400,10000]; //default current player: size, speed, view, balance 
+    if(this.par.Debug==0){
+      this.socket = io();
+    }
+    else{
+      // this.socket = io('http://localhost:5001');
+      this.socket = io('https://shisha-82b53f8abb75.herokuapp.com/');
+    }
+        
+    // Store the socket ID as a class property
+    this.playerID = this.socket.id;
+        
+    // Initialize game state
+    this.players = {};
+    this.prizes = {}; //NOT INPLEMENTED YET
+    this.localPlayer = { x: 0, y: 0 };
+    this.previousPlayers = {};
+    this.pendingInputs = [];
+    
+    // Initialize timing variables
+    this.lastUpdateTime = Date.now();
+    this.lastServerUpdate = Date.now();
+    
+    // Initialize input tracking
+    this.lastProcessedInput = 0;
+    this.inputSequence = 0;
+
+    // Set up socket listener for player updates
+    this.socket.on('players_update', (data) => {
+        const now = Date.now();
+        this.previousPlayers = {...this.players};
+        this.players = data;
+        this.lastUpdateTime = now;
+        this.lastServerUpdate = now;
+
+        // Handle server reconciliation
+        while (this.pendingInputs.length > 0 && 
+               this.pendingInputs[0].sequence <= this.lastProcessedInput) {
+            this.pendingInputs.shift();
+        }
+
+        // Re-apply pending inputs
+        this.pendingInputs.forEach(input => {
+            this.localPlayer.x = input.x;
+            this.localPlayer.y = input.y;
+        });
+    });
+
+    this.socket.on('connect', () => {
+      this.playerID = this.socket.id;
+      console.log('Connected with ID:', this.playerID);
+    });
+  }
+
+  processInput(x, y) {
+        this.inputSequence++;
+
+        // Use raw coordinates directly
+        this.localPlayer.x = x;
+        this.localPlayer.y = y;
+
+        // Save input for reconciliation
+        this.pendingInputs.push({
+            sequence: this.inputSequence,
+            x: x,
+            y: y
+        });
+
+        // Send raw coordinates to server
+        this.socket.emit('move', {
+            sequence: this.inputSequence,
+            x: x,
+            y: y
+        });
+    }
+
+
+  
+
+  setVals(chans){
   }
 }
 
-//=============================== ConvertedGLSLs_multiplayerAvaLoader ========================
-class ConvertedGLSLs_multiplayerAvaLoader extends TOP {
+
+
+
+//=============================== ConvertedGLSLs_viewportCHOP ========================
+class ConvertedGLSLs_viewportCHOP extends CHOP{
+
+
   constructor(name, time, gl) {
-    super(name, time, gl, true, [], ["Output"]);
+    super(name, time, gl, true, [], ['Output']);
     this.minInputs = 0;
     this.maxInputs = 0;
 
-    this.OPType = "avaloaderTOP";
+    this.numChans = 3;
+    this.par.Orthowidth = 500;
+    this.chans = [1920,1080,500,4];//w, h, rthowidth, scale
 
-    this.par.outputresolution = 9; //custom
+  }
+
+  
+
+  updateDo(){
+    
+    const w = this.gl.drawingBufferWidth;
+    const h = this.gl.drawingBufferHeight;
+    const maxDim = Math.max(w,h);
+
+    const scale = maxDim/this.par.Orthowidth;
+
+    this.chans[0] = w;
+    this.chans[1] = h;
+    this.chans[2] = this.par.Orthowidth;
+    this.chans[3] = scale;
+
+
+
+
+    
+    
+    
+  }
+}
+
+
+
+
+
+
+
+
+
+
+
+
+//=============================== ConvertedGLSLs_orthoMove ========================
+class ConvertedGLSLs_orthoMove extends CHOP{
+  constructor(name, time, gl) {
+    super(name, time, gl, true, ['xy'], ['Output']);
+    this.minInputs = 1;
+    this.maxInputs = 1;
+
+    this.numChans = 2;
+    // this.chans = [0,0];
+    // this.prevChans = [-11111,-11111];
+    this.prevChans = [0,0];
+
+    //vars
+
+
+   
+  }
+
+  
+
+  updateDo(){
+    // this.chans = this.inputs[0].chans.slice();
+    // return;
+    let modified = -1;
+    if(this.inputs[0].chans[0] != this.prevChans[0]) modified = 0;
+    if(this.inputs[0].chans[1] != this.prevChans[1]) modified = 1;
+    this.prevChans[0] = this.inputs[0].chans[0]*1;
+    this.prevChans[1] = this.inputs[0].chans[1]*1;
+    
+    if(modified == -1)return;
+    this.chans = this.inputs[0].chans.slice();
+    let x = this.inputs[0].chans[0]*1;
+    let y = this.inputs[0].chans[1]*1;
+
+    if (Math.abs(x) > Math.abs(y)) {
+        y = 0;
+    }
+    else {
+        if (Math.abs(x) < Math.abs(y)) {
+            x = 0;
+          }
+        else {
+            if (modified == 0) {
+                y = 0;
+            }
+            else {
+                x = 0;
+            }
+        }
+      }
+    
+   
+    this.chans[0] = x;
+    this.chans[1] = y;
+
+    
+    
+    
+  }
+}
+
+
+//=============================== ConvertedGLSLs_multiplayerAvaLoader ========================
+class ConvertedGLSLs_multiplayerAvaLoader extends TOP{
+  constructor(name, time, gl) {
+    super(name, time, gl, true, [], ['Output']);
+    this.minInputs = 0;
+    this.maxInputs = 0;
+
+    this.OPType = 'avaloaderTOP';
+    
+    this.par.outputresolution = 9;//custom
     const size = 1000;
     this.par.resolutionw = size;
     this.par.resolutionh = size;
     this.width = size;
     this.height = size;
     this.slotSize = 100;
+
+  
+
 
     this.fragmentShader = `#version 300 es
     precision highp float;
@@ -2984,85 +2841,86 @@ class ConvertedGLSLs_multiplayerAvaLoader extends TOP {
     this.canvasSlots = new Set(); // stores "x,y" strings of occupied slots
   }
 
-  loadImages(url, x, y) {
+  loadImages(url, x,y){
     const img = new Image();
     img.crossOrigin = "anonymous";
     img.src = url;
     img.onerror = (e) => {
-      console.error("Error loading image:", e);
+      console.error('Error loading image:', e);
     };
     img.onload = () => {
-      this.ctx.drawImage(img, x, y, this.slotSize, this.slotSize);
-      this.render();
+        this.ctx.drawImage(img, x, y, this.slotSize, this.slotSize);
+        this.render();
     };
   }
 
-  onCompile() {
+  onCompile(){
     this.textCanvas = document.createElement("canvas");
     this.textCanvas.width = this.width;
     this.textCanvas.height = this.height;
-    console.log("ON COMPILE IMG:", this.textCanvas);
-
+    console.log('ON COMPILE IMG:', this.textCanvas);
+    
     this.ctx = this.textCanvas.getContext("2d", { alpha: true });
     this.ctx.clearRect(0, 0, this.textCanvas.width, this.textCanvas.height);
     this.initTextCanvas();
     this.compile();
     this.loadedIdsImages = [];
-
+    
     // TEST Load initial set of images
     // for (let i = 0; i < 50; i++) {
     //     this.loadImageById(i);
     // }
+
   }
 
   loadImageById(id) {
     // If image is already loaded, return its UV coordinates
     if (this.loadedImages.has(id)) {
-      return this.loadedImages.get(id);
+        return this.loadedImages.get(id);
     }
 
     const slotSize = this.slotSize;
     const padding = 0;
     const imagesPerRow = Math.floor(this.width / slotSize);
     const maxRows = Math.floor(this.height / slotSize);
-
+    
     let foundSlot = null;
-
+    
     // Start from bottom left (row 0 is bottom)
     for (let row = 0; row < maxRows; row++) {
-      for (let col = 0; col < imagesPerRow; col++) {
-        const x = col * slotSize;
-        // Flip Y coordinate to start from bottom
-        const y = this.height - (row + 1) * slotSize;
-        const slotKey = `${x},${y}`;
-
-        if (!this.canvasSlots.has(slotKey)) {
-          foundSlot = { x, y };
-          this.canvasSlots.add(slotKey);
-          break;
+        for (let col = 0; col < imagesPerRow; col++) {
+            const x = col * slotSize;
+            // Flip Y coordinate to start from bottom
+            const y = this.height - (row + 1) * slotSize;
+            const slotKey = `${x},${y}`;
+            
+            if (!this.canvasSlots.has(slotKey)) {
+                foundSlot = { x, y };
+                this.canvasSlots.add(slotKey);
+                break;
+            }
         }
-      }
-      if (foundSlot) break;
+        if (foundSlot) break;
     }
 
     if (!foundSlot) {
-      console.warn("No empty slots available for image:", id);
-      return null;
+        console.warn('No empty slots available for image:', id);
+        return null;
     }
 
     // Calculate UV coordinates (0-1) from bottom-left corner
     const uvX = foundSlot.x / this.width;
     // Flip Y UV coordinate to match OpenGL coordinate system
     const uvY = (this.height - foundSlot.y - slotSize) / this.height;
-
+    
     // Store the image data
     const imageData = {
-      x: foundSlot.x,
-      y: foundSlot.y,
-      uvX,
-      uvY,
-      size: slotSize,
-      uvSize: slotSize / this.width, // normalized size in UV space
+        x: foundSlot.x,
+        y: foundSlot.y,
+        uvX,
+        uvY,
+        size: slotSize,
+        uvSize: slotSize / this.width // normalized size in UV space
     };
     this.loadedImages.set(id, imageData);
 
@@ -3074,13 +2932,13 @@ class ConvertedGLSLs_multiplayerAvaLoader extends TOP {
     return imageData;
   }
 
-  resize() {
-    for (let j = 0; j < this.inputs.length; j++) {
-      this.inputs[j].resize();
-    }
+  resize(){
+    for (let j = 0; j< this.inputs.length; j++) {this.inputs[j].resize();}
   }
 
+
   initTextCanvas() {
+
     this.textTexture = this.gl.createTexture();
     this.gl.bindTexture(this.gl.TEXTURE_2D, this.textTexture);
     this.gl.texImage2D(
@@ -3091,26 +2949,10 @@ class ConvertedGLSLs_multiplayerAvaLoader extends TOP {
       this.gl.UNSIGNED_BYTE,
       this.textCanvas
     );
-    this.gl.texParameteri(
-      this.gl.TEXTURE_2D,
-      this.gl.TEXTURE_WRAP_S,
-      this.gl.CLAMP_TO_EDGE
-    );
-    this.gl.texParameteri(
-      this.gl.TEXTURE_2D,
-      this.gl.TEXTURE_WRAP_T,
-      this.gl.CLAMP_TO_EDGE
-    );
-    this.gl.texParameteri(
-      this.gl.TEXTURE_2D,
-      this.gl.TEXTURE_MIN_FILTER,
-      this.gl.LINEAR
-    );
-    this.gl.texParameteri(
-      this.gl.TEXTURE_2D,
-      this.gl.TEXTURE_MAG_FILTER,
-      this.gl.LINEAR
-    );
+    this.gl.texParameteri(this.gl.TEXTURE_2D, this.gl.TEXTURE_WRAP_S, this.gl.CLAMP_TO_EDGE);
+    this.gl.texParameteri(this.gl.TEXTURE_2D, this.gl.TEXTURE_WRAP_T, this.gl.CLAMP_TO_EDGE);
+    this.gl.texParameteri(this.gl.TEXTURE_2D, this.gl.TEXTURE_MIN_FILTER, this.gl.LINEAR);
+    this.gl.texParameteri(this.gl.TEXTURE_2D, this.gl.TEXTURE_MAG_FILTER, this.gl.LINEAR);
   }
 
   // Render the text texture
@@ -3118,14 +2960,14 @@ class ConvertedGLSLs_multiplayerAvaLoader extends TOP {
     this.gl.useProgram(this.program);
 
     this.gl.bindTexture(this.gl.TEXTURE_2D, this.textTexture);
-    this.gl.texImage2D(
-      this.gl.TEXTURE_2D,
-      0,
-      this.gl.RGBA,
-      this.gl.RGBA,
-      this.gl.UNSIGNED_BYTE,
-      this.textCanvas
-    );
+      this.gl.texImage2D(
+        this.gl.TEXTURE_2D,
+        0,
+        this.gl.RGBA,
+        this.gl.RGBA,
+        this.gl.UNSIGNED_BYTE,
+        this.textCanvas
+      );
     // Bind the text texture
     this.gl.activeTexture(this.gl.TEXTURE0);
     this.gl.bindTexture(this.gl.TEXTURE_2D, this.textTexture);
@@ -3136,402 +2978,148 @@ class ConvertedGLSLs_multiplayerAvaLoader extends TOP {
     // Set the output target and draw
     if (!this.toScreen) {
       this.gl.bindFramebuffer(this.gl.FRAMEBUFFER, this.output.framebuffer);
+      
     } else {
       this.gl.bindFramebuffer(this.gl.FRAMEBUFFER, null);
     }
     gl.viewport(0, 0, this.width, this.height);
     // Bind buffer and draw
     this.gl.bindBuffer(this.gl.ARRAY_BUFFER, this.buffer);
-    this.gl.vertexAttribPointer(
-      this.screenVertexPosition,
-      2,
-      this.gl.FLOAT,
-      false,
-      0,
-      0
-    );
+    this.gl.vertexAttribPointer(this.screenVertexPosition, 2, this.gl.FLOAT, false, 0, 0);
     this.gl.clear(this.gl.COLOR_BUFFER_BIT | this.gl.DEPTH_BUFFER_BIT);
     this.gl.drawArrays(this.gl.TRIANGLES, 0, 6);
   }
 
-  updateDo() {
+   updateDo(){ 
     const mpOp = this.par.Multiplayerop[0];
-    Object.values(mpOp.players).forEach((player) => {
-      this.loadImageById(player.id);
+    Object.values(mpOp.players).forEach(player => {
+        this.loadImageById(player.id);
     });
+    
   }
+
+ 
 }
 
-//=============================== ConvertedGLSLs_multiplayerCHOP ========================
-class ConvertedGLSLs_multiplayerCHOP extends CHOP {
-  constructor(name, time, gl) {
-    super(name, time, gl, true, [], ["Output"]);
-    this.OPType = "keyboardinCHOP";
-    this.minInputs = 0;
-    this.maxInputs = 0;
-    this.par.Posx = 0;
-    this.par.Posy = 0;
-    this.chans = [40, 200, 400, 10000]; //default current player: size, speed, view, balance
-  }
 
-  updateDo() {
-    this.processInput(this.par.Posx, this.par.Posy);
-    const now = Date.now();
-    const timeSinceUpdate = now - this.lastUpdateTime;
-    const interpolationFactor = Math.min(
-      timeSinceUpdate / this.serverUpdateRate,
-      1
-    );
-
-    // Draw other players
-    for (let id in this.players) {
-      if (id === this.socket.id) continue; // Skip local player
-
-      const player = this.players[id];
-      const prevPos = this.previousPlayers[id];
-
-      if (prevPos) {
-        const dx = player.x - prevPos.x;
-        const dy = player.y - prevPos.y;
-        const velocityMagnitude = Math.sqrt(dx * dx + dy * dy);
-        const velocityThreshold = 0.1;
-
-        let predictedX = player.x;
-        let predictedY = player.y;
-
-        if (velocityMagnitude > velocityThreshold) {
-          if (timeSinceUpdate > this.serverUpdateRate) {
-            // Use extrapolation with raw coordinates
-            const maxExtrapolationTime = 200;
-            const extrapolationTime = Math.min(
-              (timeSinceUpdate - this.serverUpdateRate) / this.serverUpdateRate,
-              maxExtrapolationTime / this.serverUpdateRate
-            );
-            predictedX += dx * extrapolationTime;
-            predictedY += dy * extrapolationTime;
-          } else {
-            // Use interpolation with raw coordinates
-            predictedX = prevPos.x + dx * interpolationFactor;
-            predictedY = prevPos.y + dy * interpolationFactor;
-          }
-          //NON INFINITE FIELD FOR NOW
-          predictedX = ((predictedX + 500) % 1000) - 500;
-          predictedY = ((predictedY + 500) % 1000) - 500;
-        }
-      }
-    }
-    // Update current player position in players object
-    if (this.socket && this.socket.id && this.players[this.socket.id]) {
-      this.players[this.socket.id].x = this.par.Posx;
-      this.players[this.socket.id].y = this.par.Posy;
-      const maxSpeed = this.players[this.socket.id].speed;
-      const maxSize = this.players[this.socket.id].size;
-      const maxViewport = this.players[this.socket.id].viewport_size;
-      const balance = this.players[this.socket.id].balance;
-      this.chans = [maxSize, maxSpeed, maxViewport, balance];
-
-      const speedLimitOp = this.par.Speedlimitop[0];
-      speedLimitOp.par.min = -maxSpeed;
-      speedLimitOp.par.max = maxSpeed;
-
-      const viewportChop = this.par.Viewportchop[0];
-      viewportChop.par.Orthowidth = maxViewport;
-    }
-    // this.chans[0] = Object.keys(this.players).length;
-  }
-
-  doInit() {
-    this.chans = [40, 200, 400, 10000]; //default current player: size, speed, view, balance
-    if (this.par.Debug == 0) {
-      this.socket = io();
-    } else {
-      // this.socket = io('http://localhost:5001');
-      this.socket = io("https://shisha-82b53f8abb75.herokuapp.com/");
-    }
-
-    // Store the socket ID as a class property
-    this.playerID = this.socket.id;
-
-    // Initialize game state
-    this.players = {};
-    this.prizes = {};
-    this.localPlayer = { x: 0, y: 0 };
-    this.previousPlayers = {};
-    this.pendingInputs = [];
-
-    // Initialize timing variables
-    this.lastUpdateTime = Date.now();
-    this.lastServerUpdate = Date.now();
-
-    // Initialize input tracking
-    this.lastProcessedInput = 0;
-    this.inputSequence = 0;
-
-    //handle prizes_update
-    this.socket.on("prizes_update", (data) => {
-      this.prizes = data;
-      console.log(this.prizes);
-    });
-
-    //handle picked_prize
-    this.socket.on("picked_prize", (data) => {
-      console.log("picked_prize", data);
-      this.par.Prizesound[0].triggerpulse();
-    });
-
-    // Set up socket listener for player updates
-    this.socket.on("players_update", (data) => {
-      const now = Date.now();
-      this.previousPlayers = { ...this.players };
-      this.players = data;
-      this.lastUpdateTime = now;
-      this.lastServerUpdate = now;
-
-      // Handle server reconciliation
-      while (
-        this.pendingInputs.length > 0 &&
-        this.pendingInputs[0].sequence <= this.lastProcessedInput
-      ) {
-        this.pendingInputs.shift();
-      }
-
-      // Re-apply pending inputs
-      this.pendingInputs.forEach((input) => {
-        this.localPlayer.x = input.x;
-        this.localPlayer.y = input.y;
-      });
-    });
-
-    this.socket.on("connect", () => {
-      this.playerID = this.socket.id;
-      console.log("Connected with ID:", this.playerID);
-    });
-  }
-
-  processInput(x, y) {
-    this.inputSequence++;
-
-    // Use raw coordinates directly
-    this.localPlayer.x = x;
-    this.localPlayer.y = y;
-
-    // Save input for reconciliation
-    this.pendingInputs.push({
-      sequence: this.inputSequence,
-      x: x,
-      y: y,
-    });
-
-    // Send raw coordinates to server
-    this.socket.emit("move", {
-      sequence: this.inputSequence,
-      x: x,
-      y: y,
-    });
-  }
-
-  setVals(chans) {}
-}
-
-//=============================== ConvertedGLSLs_viewportCHOP ========================
-class ConvertedGLSLs_viewportCHOP extends CHOP {
-  constructor(name, time, gl) {
-    super(name, time, gl, true, [], ["Output"]);
-    this.minInputs = 0;
-    this.maxInputs = 0;
-
-    this.numChans = 3;
-    this.par.Orthowidth = 500;
-    this.chans = [1920, 1080, 500, 4]; //w, h, rthowidth, scale
-  }
-
-  updateDo() {
-    const w = this.gl.drawingBufferWidth;
-    const h = this.gl.drawingBufferHeight;
-    const maxDim = Math.max(w, h);
-
-    const scale = maxDim / this.par.Orthowidth;
-
-    this.chans[0] = w;
-    this.chans[1] = h;
-    this.chans[2] = this.par.Orthowidth;
-    this.chans[3] = scale;
-  }
-}
-
-//=============================== ConvertedGLSLs_orthoMove ========================
-class ConvertedGLSLs_orthoMove extends CHOP {
-  constructor(name, time, gl) {
-    super(name, time, gl, true, ["xy"], ["Output"]);
-    this.minInputs = 1;
-    this.maxInputs = 1;
-
-    this.numChans = 2;
-    // this.chans = [0,0];
-    // this.prevChans = [-11111,-11111];
-    this.prevChans = [0, 0];
-
-    //vars
-  }
-
-  updateDo() {
-    // this.chans = this.inputs[0].chans.slice();
-    // return;
-    let modified = -1;
-    if (this.inputs[0].chans[0] != this.prevChans[0]) modified = 0;
-    if (this.inputs[0].chans[1] != this.prevChans[1]) modified = 1;
-    this.prevChans[0] = this.inputs[0].chans[0] * 1;
-    this.prevChans[1] = this.inputs[0].chans[1] * 1;
-
-    if (modified == -1) return;
-    this.chans = this.inputs[0].chans.slice();
-    let x = this.inputs[0].chans[0] * 1;
-    let y = this.inputs[0].chans[1] * 1;
-
-    if (Math.abs(x) > Math.abs(y)) {
-      y = 0;
-    } else {
-      if (Math.abs(x) < Math.abs(y)) {
-        x = 0;
-      } else {
-        if (modified == 0) {
-          y = 0;
-        } else {
-          x = 0;
-        }
-      }
-    }
-
-    this.chans[0] = x;
-    this.chans[1] = y;
-  }
-}
 
 //=============================== SPRITES =====================
-class ConvertedGLSLs_circles extends OP {
+class ConvertedGLSLs_spritesAva extends OP{
   constructor(name, time, gl) {
-    super(name, time, gl, true, ["Source"], ["Output"]);
+    super(name, time, gl, true, ['Source','Mask'], ['Output']);
     this.gl = gl;
-    this.family = "TOP";
-    this.par.outputresolution = 9; //Output Resolution:  0: Use Input  1: Eighth  2: Quarter  3: Half  4: 2X  5: 4X  6: 8X  7: Fit Resolution  8: Limit Resolution  9: Custom Resolution  10: Parent Panel Size
-    this.par.resolutionw = 1000; //Resolution
-    this.par.resolutionh = 1000; //Resolution
+    this.family = 'TOP';
+    this.par.outputresolution = 10;  //Output Resolution:  0: Use Input  1: Eighth  2: Quarter  3: Half  4: 2X  5: 4X  6: 8X  7: Fit Resolution  8: Limit Resolution  9: Custom Resolution  10: Parent Panel Size
+    this.par.resolutionw = 1000;  //Resolution
+    this.par.resolutionh = 1000;  //Resolution
     this.width = 1000;
     this.height = 1000;
     this.fixedResInput = 0;
     this.minInputs = 0;
-    this.maxInputs = 1;
+    this.maxInputs = 2;
 
+    // Replace sprite data properties with new structure
     this.sprites = [];
     this.spriteData = null;
+    this.vao = null;  // Add VAO property
     this.numSprites = 0;
-    this.vao = null; // Add VAO property
 
-    this.vertexShader = `#version 300 es
+    this.par.Scale;
+    this.par.Posx;
+    this.par.Posy;
+    this.par.Avascale = 1;
+  }
+
+  //WEBGL 2.0
+  vertexShader =`#version 300 es
   in vec2 position;
   in vec3 instancePosition; // x, y, size
   in vec4 instanceTexCoords; // startU, startV, endU, endV
   in vec3 instanceColor;    // r, g, b
+  
+  uniform vec2 resolution;
+
   out vec2 vUV;
   out vec4 vTexCoords;
   out vec3 vColor;
+
+
   void main() {
-    vec2 pos = position * instancePosition.z + instancePosition.xy * 2.0 - 1.0;
+    float size = instancePosition.z;
+    vec2 aspect = vec2(1.,resolution.x/resolution.y);
+    vec2 pos = position * size * aspect + instancePosition.xy * 2.0 - 1.0;
     gl_Position = vec4(pos, 0.0, 1.0);
     vUV = position * 0.5 + 0.5;
     vTexCoords = instanceTexCoords;
     vColor = instanceColor;
   }`;
-
-    this.fragmentShader = `#version 300 es
+  
+  fragmentShader = `#version 300 es
   precision highp float;
   in vec2 vUV;
   in vec4 vTexCoords;
   in vec3 vColor;
   out vec4 fragColor;
-  uniform sampler2D sTD2DInputs[1];
+  uniform sampler2D sTD2DInputs[2];
   @TDUniforms@
   
 void main()
 {  
     float dist = length(vUV - vec2(0.5));
     float alpha = smoothstep(0.5, 0.48, dist);
-    // vec2 texCoord = mix(vTexCoords.xy, vTexCoords.zw, vUV);
-    vec4 c = texture(sTD2DInputs[0], vUV.st);
-    fragColor = vec4(vColor*c.rgb, c.a);
+    vec2 texCoord = mix(vTexCoords.xy, vTexCoords.zw, vUV);
+    vec4 c = texture(sTD2DInputs[0], texCoord)*texture(sTD2DInputs[1], vUV.st);
+    fragColor = vec4(c.rgb, c.a);
 }`;
 
-    this.program;
-    this.uniforms = [];
-    this.output;
-    this.resX;
-    this.resY;
-    this.buffer;
-    this.toScreen = false;
+  program;
+  uniforms = [];
+  output;
+  resX;
+  resY;
+  buffer;
+  toScreen = false;
+
+  appendUniform(name, type, vals){
+    var c = {'name':name, 'type':type, 'vals': vals};
+    this.uniforms.push(c);
   }
 
-  appendUniform(name, type, vals) {
-    var c = { name: name, type: type, vals: vals };
-    let existingUniform = this.uniforms.find((u) => u.name === name);
-    if (existingUniform) {
-      existingUniform.vals = vals;
-    } else {
-      this.uniforms.push(c);
-    }
-  }
 
-  createTarget(width, height, type) {
+  createTarget( width, height, type ) {
+
     var target = {};
     var gl = this.gl;
     target.framebuffer = gl.createFramebuffer();
     target.renderbuffer = gl.createRenderbuffer();
     target.texture = gl.createTexture();
-    gl.bindTexture(gl.TEXTURE_2D, target.texture);
-    gl.texImage2D(
-      gl.TEXTURE_2D,
-      0,
-      gl.RGBA,
-      width,
-      height,
-      0,
-      gl.RGBA,
-      type,
-      null
-    );
-    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE);
-    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
-    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.LINEAR);
-    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR);
-    gl.bindFramebuffer(gl.FRAMEBUFFER, target.framebuffer);
-    gl.framebufferTexture2D(
-      gl.FRAMEBUFFER,
-      gl.COLOR_ATTACHMENT0,
-      gl.TEXTURE_2D,
-      target.texture,
-      0
-    );
-    gl.bindTexture(gl.TEXTURE_2D, null);
-    gl.bindRenderbuffer(gl.RENDERBUFFER, null);
-    gl.bindFramebuffer(gl.FRAMEBUFFER, null);
+    gl.bindTexture( gl.TEXTURE_2D, target.texture );
+    gl.texImage2D( gl.TEXTURE_2D, 0, gl.RGBA, width, height, 0, gl.RGBA, type, null );
+    gl.texParameteri( gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE );
+    gl.texParameteri( gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE );
+    gl.texParameteri( gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.LINEAR );
+    gl.texParameteri( gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR);
+    gl.bindFramebuffer( gl.FRAMEBUFFER, target.framebuffer );
+    gl.framebufferTexture2D( gl.FRAMEBUFFER, gl.COLOR_ATTACHMENT0, gl.TEXTURE_2D, target.texture, 0 );
+    gl.bindTexture( gl.TEXTURE_2D, null );
+    gl.bindRenderbuffer( gl.RENDERBUFFER, null );
+    gl.bindFramebuffer( gl.FRAMEBUFFER, null);
     return target;
+
   }
 
-  createShader(src, type) {
-    var shader = this.gl.createShader(type);
-    this.gl.shaderSource(shader, src);
-    this.gl.compileShader(shader);
+  createShader( src, type ) {
+    var shader = this.gl.createShader( type );
+    this.gl.shaderSource( shader, src );
+    this.gl.compileShader( shader );
     if (!this.gl.getShaderParameter(shader, this.gl.COMPILE_STATUS)) {
-      console.error(
-        "Shader compile error:",
-        this.path,
-        this.gl.getShaderInfoLog(shader)
-      );
-      const shaderSourceLines = src.split("\n");
-      shaderSourceLines.forEach((line, index) => {
-        console.log(`${index + 1}: ${line}`);
-      });
-      this.gl.deleteShader(shader);
-      return null;
+        console.error('Shader compile error:', this.path, this.gl.getShaderInfoLog(shader));
+        const shaderSourceLines = src.split("\n");
+        shaderSourceLines.forEach((line, index) => {
+          console.log(`${index + 1}: ${line}`);
+        });
+        this.gl.deleteShader(shader);
+        return null;
     }
     // console.log(this.name, src);
     return shader;
@@ -3544,59 +3132,57 @@ void main()
     program.uniformsCache[label] = this.gl.getUniformLocation(program, label);
   }
 
-  setResolution() {
-    if (this.par.outputresolution == 0) {
-      //USE INPUT
-      if (this.inputs.length == 0) {
+  setResolution(){
+     // console.log('=====>> RESIZE',this.name)
+    if (this.par.outputresolution == 0){ //USE INPUT
+      if(this.inputs.length == 0){
         this.width = this.par.resolutionw;
         this.height = this.par.resolutionh;
-      } else {
+      }
+      else{
         const inOp = this.inputs[this.fixedResInput];
         // console.log('=========>> RES FROM INPUT',inOp.name)
         this.width = inOp.width;
         this.height = inOp.height;
       }
     }
-    if (this.par.outputresolution == 9) {
+    if (this.par.outputresolution == 9){
       this.width = this.par.resolutionw;
       this.height = this.par.resolutionh;
     }
 
-    if (this.par.outputresolution == 10) {
+    if (this.par.outputresolution == 10){
       this.width = this.gl.drawingBufferWidth;
       this.height = this.gl.drawingBufferHeight;
     }
 
-    this.appendUniform("resolution", "2f", [this.width, this.height]);
-
+    this.appendUniform('resolution','2f',[this.width,this.height]);
+    this.appendUniform('viewportXY','2f',[this.par.Posx,this.par.Posy]);
+    this.appendUniform('viewportScale','1f',[this.par.Scale]);
+    // console.log('---->SET RESOLUTION:',this.name, this.width, this.height, this.fixedResInput);
+    
     let N = this.inputs.length;
-    if (N > 0) {
-      for (let i = 0; i < N; i++) {
-        this.appendUniform(`uTD2DInfos[${i}].res`, "4f", [
-          1 / this.inputs[i].width,
-          1 / this.inputs[i].height,
-          this.inputs[i].width,
-          this.inputs[i].height,
-        ]);
-        this.appendUniform(`uTD2DInfos[${i}].depth`, "4f", [1, 1, 1, 1]);
+    if (N>0){
+      for (let i=0; i<N; i++){
+        this.appendUniform(`uTD2DInfos[${i}].res`,'4f', [1./this.inputs[i].width, 1./this.inputs[i].height, this.inputs[i].width, this.inputs[i].height]);
+        this.appendUniform(`uTD2DInfos[${i}].depth`,'4f',[1.,1.,1.,1.]);
+        // console.log(this.name,'TO UNIFORMS->', this.inputs[i].width,this.inputs[i].height);
       }
+      // console.log(this.name, 'RES UNIFORM->', this.width,this.height);
     }
+
+
+
   }
 
-  insertTDUniforms() {
-    let example = "";
+  insertTDUniforms(){
+    let example = '';
     let texInfoArray = [];
     let N = this.inputs.length;
 
-    if (N > 0) {
-      for (let i = 0; i < N; i++) {
-        texInfoArray.push(
-          `TDTexInfo(vec4(1./${Math.round(
-            this.inputs[i].width
-          )}., 1./${Math.round(this.inputs[i].height)}., ${Math.round(
-            this.inputs[i].width
-          )}., ${Math.round(this.inputs[i].height)}.), vec4(1.))`
-        );
+    if (N>0){
+      for (let i=0; i<N; i++){
+        texInfoArray.push(`TDTexInfo(vec4(1./${Math.round(this.inputs[i].width)}., 1./${Math.round(this.inputs[i].height)}., ${Math.round(this.inputs[i].width)}., ${Math.round(this.inputs[i].height)}.), vec4(1.))`)
       }
       example = `
   struct TDTexInfo {
@@ -3606,9 +3192,9 @@ void main()
 
   uniform TDTexInfo uTD2DInfos[${N}];
   const int TD_NUM_2D_INPUTS = ${N};`;
-    }
-
-    this.fragmentShader = this.fragmentShader.replace("@TDUniforms@", example);
+  }
+  
+  this.fragmentShader = this.fragmentShader.replace('@TDUniforms@',example);
   }
 
   disposeResources() {
@@ -3642,113 +3228,94 @@ void main()
 
     // Delete output target resources (framebuffer, renderbuffer, texture)
     if (this.output) {
-      if (this.output.framebuffer)
-        gl.deleteFramebuffer(this.output.framebuffer);
-      if (this.output.renderbuffer)
-        gl.deleteRenderbuffer(this.output.renderbuffer);
+      if (this.output.framebuffer) gl.deleteFramebuffer(this.output.framebuffer);
+      if (this.output.renderbuffer) gl.deleteRenderbuffer(this.output.renderbuffer);
       if (this.output.texture) gl.deleteTexture(this.output.texture);
       this.output = null;
     }
-
+    
     // Add instance buffer cleanup
     if (this.instanceBuffer) {
-      gl.deleteBuffer(this.instanceBuffer);
-      this.instanceBuffer = null;
+        gl.deleteBuffer(this.instanceBuffer);
+        this.instanceBuffer = null;
     }
 
     // If you have any additional resources, delete them here.
   }
 
-  doInit() {
+  doInit(){
     // console.log('&&& DO INIT TOP');
-    // this.disposeResources();
+    this.disposeResources();
     this.setResolution();
     this.insertTDUniforms();
     this.compile();
-    // console.log(this.name, ' shader:\n',this.fragmentShader);
+    
+  }
+  onResize(){
+
   }
 
-  onResize() {}
-
-  resize() {
-    for (let j = 0; j < this.inputs.length; j++) {
+  resize(){
+    for (let j = 0; j< this.inputs.length; j++) {
       this.inputs[j].resize();
     }
 
     this.setResolution();
-    try {
+    try{
       this.gl.useProgram(this.program);
 
       //RESOLUTION RELATED UNIFORMS ===============
-      if (
-        this.program.uniformsCache &&
-        this.program.uniformsCache["resolution"]
-      ) {
-        this.gl.uniform2f(
-          this.program.uniformsCache["resolution"],
-          this.width,
-          this.height
-        );
+      if(this.program.uniformsCache && this.program.uniformsCache['resolution']) {
+        this.gl.uniform2f(this.program.uniformsCache['resolution'], this.width, this.height);
       }
       let N = this.inputs.length;
-      if (N > 0) {
-        for (let i = 0; i < N; i++) {
-          this.gl.uniform4f(
-            this.program.uniformsCache[`uTD2DInfos[${i}].res`],
-            1 / this.inputs[i].width,
-            1 / this.inputs[i].height,
-            this.inputs[i].width,
-            this.inputs[i].height
-          );
-          this.gl.uniform4f(
-            this.program.uniformsCache[`uTD2DInfos[${i}].depth`],
-            1,
-            1,
-            1,
-            1
-          );
+      if (N>0){
+        for (let i=0; i<N; i++){
+          this.gl.uniform4f(this.program.uniformsCache[`uTD2DInfos[${i}].res`],1./this.inputs[i].width, 1./this.inputs[i].height, this.inputs[i].width, this.inputs[i].height);
+          this.gl.uniform4f(this.program.uniformsCache[`uTD2DInfos[${i}].depth`],1.,1.,1.,1.);
         }
       }
       this.gl.useProgram(null);
-      this.output = this.createTarget(
-        this.width,
-        this.height,
-        this.gl.UNSIGNED_BYTE
-      );
-    } catch (e) {
-      console.error("catched: ", e);
+      this.output = this.createTarget(this.width, this.height, this.gl.UNSIGNED_BYTE);
+      }
+    catch (e) {
+      console.error('catched: ',e);
     }
 
     this.onResize();
   }
 
-  compile() {
-    const gl = this.gl;
 
+//======================COMPILE ================
+  compile(){
+    const gl = this.gl;
+    
     // Create and bind VAO
     this.vao = gl.createVertexArray();
     gl.bindVertexArray(this.vao);
-
+    
     // Create a buffer for the quad vertices
-    const quadVertices = new Float32Array([
-      -1, -1, 1, -1, -1, 1, -1, 1, 1, -1, 1, 1,
-    ]);
+    const quadVertices = new Float32Array([-1, -1,1, -1,-1, 1,-1, 1,1, -1,1, 1]);
 
+    
     this.updateSpriteBuffer();
 
-    this.buffer = this.gl.createBuffer();
-    this.gl.bindBuffer(gl.ARRAY_BUFFER, this.buffer);
-    this.gl.bufferData(gl.ARRAY_BUFFER, quadVertices, gl.STATIC_DRAW);
+    this.buffer = gl.createBuffer();
+    gl.bindBuffer(gl.ARRAY_BUFFER, this.buffer);
+    gl.bufferData(gl.ARRAY_BUFFER, quadVertices, gl.STATIC_DRAW);
 
-    // Create instance data buffer
-    this.instanceBuffer = this.gl.createBuffer();
-    this.gl.bindBuffer(gl.ARRAY_BUFFER, this.instanceBuffer);
-    this.gl.bufferData(gl.ARRAY_BUFFER, this.spriteData, gl.DYNAMIC_DRAW);
+    if (!this.instanceBuffer) {
+        this.instanceBuffer = gl.createBuffer();
+    }
+    gl.bindBuffer(gl.ARRAY_BUFFER, this.instanceBuffer);
+    gl.bufferData(gl.ARRAY_BUFFER, this.spriteData, gl.DYNAMIC_DRAW);
+
+
 
     // Create and link program
     this.program = gl.createProgram();
-    this.vs = this.createShader(this.vertexShader, this.gl.VERTEX_SHADER);
-    this.fs = this.createShader(this.fragmentShader, this.gl.FRAGMENT_SHADER);
+    this.vs = this.createShader(this.vertexShader, gl.VERTEX_SHADER);
+    this.fs = this.createShader(this.fragmentShader, gl.FRAGMENT_SHADER);
     if (this.vs == null || this.fs == null) return null;
 
     gl.attachShader(this.program, this.vs);
@@ -3756,250 +3323,221 @@ void main()
     gl.deleteShader(this.vs);
     gl.deleteShader(this.fs);
     gl.linkProgram(this.program);
-    if (!gl.getProgramParameter(this.program, this.gl.LINK_STATUS)) {
-      var error = gl.getProgramInfoLog(this.program);
-      console.log(this.name, "fragmentShader:");
+    if ( !gl.getProgramParameter( this.program, gl.LINK_STATUS ) ) {
+      var error = gl.getProgramInfoLog( this.program );
+      console.log(this.name, 'fragmentShader:');
       console.log(this.fragmentShader);
       console.log(this.vertexShader);
-      console.error(error);
-      console.error(
-        "VALIDATE_STATUS: " +
-          this.gl.getProgramParameter(this.program, this.gl.VALIDATE_STATUS),
-        "ERROR: " + this.gl.getError()
-      );
-      let err = this.gl.getShaderInfoLog(this.fs);
-      err = err.split("ERROR:")[1].split(":")[1];
-      console.error(
-        this.name +
-          "  " +
-          this.gl.getShaderInfoLog(this.fs) +
-          "\n" +
-          err +
-          "\n" +
-          this.fragmentShader.split("\n")[err - 1]
-      );
-
+      console.error( error );
+      console.error( 'VALIDATE_STATUS: ' + gl.getProgramParameter( this.program, gl.VALIDATE_STATUS ), 'ERROR: ' + gl.getError() );
+      let err = gl.getShaderInfoLog(this.fs);
+      err = err.split('ERROR:')[1].split(':')[1];
+      console.error(this.name+'  '+gl.getShaderInfoLog(this.fs)+'\n'+err+'\n'+this.fragmentShader.split('\n')[err-1]);
+      
       return;
     }
 
     // Set up attributes
-    this.gl.useProgram(this.program);
-
+    gl.useProgram(this.program);
+    
     // Position attribute (vertices)
-    this.screenVertexPosition = this.gl.getAttribLocation(
-      this.program,
-      "position"
-    );
+    this.screenVertexPosition = gl.getAttribLocation(this.program, "position");
     gl.enableVertexAttribArray(this.screenVertexPosition);
     gl.bindBuffer(gl.ARRAY_BUFFER, this.buffer);
     gl.vertexAttribPointer(this.screenVertexPosition, 2, gl.FLOAT, false, 0, 0);
-
+    
     // Instance attributes
-    const instancePosLoc = gl.getAttribLocation(
-      this.program,
-      "instancePosition"
-    );
-    const instanceTexCoordsLoc = gl.getAttribLocation(
-      this.program,
-      "instanceTexCoords"
-    );
-    const instanceColorLoc = gl.getAttribLocation(
-      this.program,
-      "instanceColor"
-    );
-
+    const instancePosLoc = gl.getAttribLocation(this.program, "instancePosition");
+    const instanceTexCoordsLoc = gl.getAttribLocation(this.program, "instanceTexCoords");
+    const instanceColorLoc = gl.getAttribLocation(this.program, "instanceColor");
+    
     gl.bindBuffer(gl.ARRAY_BUFFER, this.instanceBuffer);
-
+    
     // Position attribute (x, y, size)
     gl.enableVertexAttribArray(instancePosLoc);
     gl.vertexAttribPointer(instancePosLoc, 3, gl.FLOAT, false, 40, 0);
     gl.vertexAttribDivisor(instancePosLoc, 1);
-
+    
     // Texture coordinates attribute (startU, startV, endU, endV)
     gl.enableVertexAttribArray(instanceTexCoordsLoc);
     gl.vertexAttribPointer(instanceTexCoordsLoc, 4, gl.FLOAT, false, 40, 12);
     gl.vertexAttribDivisor(instanceTexCoordsLoc, 1);
-
+    
     // Color attribute (r, g, b)
     gl.enableVertexAttribArray(instanceColorLoc);
     gl.vertexAttribPointer(instanceColorLoc, 3, gl.FLOAT, false, 40, 28);
     gl.vertexAttribDivisor(instanceColorLoc, 1);
 
     //UNIFORMS
-    for (var key in this.uniforms) {
-      this.cacheUniformLocation(this.program, this.uniforms[key]["name"]);
-    }
+    for (var key in this.uniforms){
+      this.cacheUniformLocation(this.program, this.uniforms[key]['name']);
+    };
+
 
     if (this.inputs.length > 0) {
-      this.cacheUniformLocation(this.program, "sTD2DInputs[0]");
+        this.cacheUniformLocation(this.program, 'sTD2DInputs[0]');
     }
 
-    // Load program0 into GPU
-    this.gl.useProgram(this.program);
-    this.screenVertexPosition = this.gl.getAttribLocation(
-      this.program,
-      "position"
-    );
-    gl.enableVertexAttribArray(this.screenVertexPosition);
+     // Load program0 into GPU
+    gl.useProgram( this.program );
+    this.screenVertexPosition = gl.getAttribLocation(this.program, "position");
+    gl.enableVertexAttribArray( this.screenVertexPosition );
+
 
     //UNIFORMS SET VALS
-    for (var key in this.uniforms) {
-      if (this.uniforms[key]["type"] == "1f")
-        this.gl.uniform1f(
-          this.program.uniformsCache[this.uniforms[key]["name"]],
-          this.uniforms[key]["vals"][0]
-        );
-      if (this.uniforms[key]["type"] == "2f")
-        this.gl.uniform2f(
-          this.program.uniformsCache[this.uniforms[key]["name"]],
-          this.uniforms[key]["vals"][0],
-          this.uniforms[key]["vals"][1]
-        );
-      if (this.uniforms[key]["type"] == "3f")
-        this.gl.uniform3f(
-          this.program.uniformsCache[this.uniforms[key]["name"]],
-          this.uniforms[key]["vals"][0],
-          this.uniforms[key]["vals"][1],
-          this.uniforms[key]["vals"][2]
-        );
-      if (this.uniforms[key]["type"] == "4f")
-        this.gl.uniform4f(
-          this.program.uniformsCache[this.uniforms[key]["name"]],
-          this.uniforms[key]["vals"][0],
-          this.uniforms[key]["vals"][1],
-          this.uniforms[key]["vals"][2],
-          this.uniforms[key]["vals"][3]
-        );
-      if (this.uniforms[key]["name"] == "resolution")
-        this.gl.uniform2f(
-          this.program.uniformsCache[this.uniforms[key]["name"]],
-          this.width,
-          this.height
-        );
-      if (this.uniforms[key]["name"] == "res")
-        this.gl.uniform2f(
-          this.program.uniformsCache[this.uniforms[key]["name"]],
-          this.width,
-          this.height
-        );
-    }
+    for (var key in this.uniforms){
+      if (this.uniforms[key]['type'] == '1f') gl.uniform1f(this.program.uniformsCache[this.uniforms[key]['name']], this.uniforms[key]['vals'][0] );
+      if (this.uniforms[key]['type'] == '2f') gl.uniform2f(this.program.uniformsCache[this.uniforms[key]['name']], this.uniforms[key]['vals'][0],this.uniforms[key]['vals'][1] );
+      if (this.uniforms[key]['type'] == '3f') gl.uniform3f(this.program.uniformsCache[this.uniforms[key]['name']], this.uniforms[key]['vals'][0],this.uniforms[key]['vals'][1],this.uniforms[key]['vals'][2] );
+      if (this.uniforms[key]['type'] == '4f') gl.uniform4f(this.program.uniformsCache[this.uniforms[key]['name']], this.uniforms[key]['vals'][0],this.uniforms[key]['vals'][1] ,this.uniforms[key]['vals'][2] ,this.uniforms[key]['vals'][3] );
+      if (this.uniforms[key]['name'] == 'resolution') gl.uniform2f(this.program.uniformsCache[this.uniforms[key]['name']], this.width, this.height );
+      if (this.uniforms[key]['name'] == 'res') gl.uniform2f(this.program.uniformsCache[this.uniforms[key]['name']], this.width, this.height );
+      
+    };
 
     //OUTPUT
-    this.output = this.createTarget(this.width, this.height, gl.UNSIGNED_BYTE);
+    this.output = this.createTarget( this.width, this.height, gl.UNSIGNED_BYTE );
     // this.output = this.createTarget( this.width, this.height, gl.FLOAT );
     gl.useProgram(null);
-    gl.bindVertexArray(null);
+    gl.bindVertexArray(null);  // Unbind VAO
   }
 
-  //================== END OF COMPILE ======================
+  //====================END COMPILE ===================
 
-  setUniform1f(name, vals) {
-    gl.useProgram(this.program);
+  setUniform1f(name,vals) {
+    this.gl.useProgram(this.program);
     this.gl.uniform1f(this.program.uniformsCache[name], vals[0]);
-    gl.useProgram(null);
+    this.gl.useProgram(null);
   }
 
-  setUniform2f(name, vals) {
-    gl.useProgram(this.program);
-    this.gl.uniform2f(this.program.uniformsCache[name], vals[0], vals[1]);
-    gl.useProgram(null);
+   setUniform2f(name,vals){
+    this.gl.useProgram( this.program );
+    this.gl.uniform2f(this.program.uniformsCache[name], vals[0],vals[1]);
+    this.gl.useProgram(null);
   }
 
-  setUniform3f(name, vals) {
-    gl.useProgram(this.program);
-    this.gl.uniform3f(
-      this.program.uniformsCache[name],
-      vals[0],
-      vals[1],
-      vals[2]
-    );
-    gl.useProgram(null);
+   setUniform3f(name,vals){
+    this.gl.useProgram( this.program );
+    this.gl.uniform3f(this.program.uniformsCache[name], vals[0],vals[1],vals[2]);
+    this.gl.useProgram(null);
   }
 
-  setUniform4f(name, vals) {
-    gl.useProgram(this.program);
-    this.gl.uniform4f(
-      this.program.uniformsCache[name],
-      vals[0],
-      vals[1],
-      vals[2],
-      vals[3]
-    );
-    gl.useProgram(null);
+  setUniform4f(name,vals){
+    this.gl.useProgram( this.program );
+    this.gl.uniform4f(this.program.uniformsCache[name], vals[0],vals[1],vals[2],vals[3]);
+    this.gl.useProgram(null);
   }
+
 
   checkAvatars() {
     const mpOp = this.par.Multiplayerop[0];
     const avaOp = this.par.Avaop[0];
 
     if (!mpOp || !avaOp || !mpOp.players || !avaOp.loadedImages) return;
-
     const currentPlayerIds = Object.keys(mpOp.players);
-
-    // Check if players changed by comparing with previous state
-    const playersChanged =
-      !this._lastPlayerIds ||
-      this._lastPlayerIds.length !== currentPlayerIds.length ||
-      !this._lastPlayerIds.every((id) => currentPlayerIds.includes(id));
+    
+    const playersChanged = !this._lastPlayerIds || 
+        this._lastPlayerIds.length !== currentPlayerIds.length ||
+        !this._lastPlayerIds.every(id => currentPlayerIds.includes(id));
 
     if (playersChanged) {
-      this.sprites = [];
-
-      // Create sprites for each player
-      for (const playerId in mpOp.players) {
-        const player = mpOp.players[playerId];
-        const id = player.id; // Default avatar ID if none specified
-        const avatarData = avaOp.loadedImages.get(id);
-
-        if (avatarData) {
-          console.log("avatarData", avatarData);
-          const sprite = {
-            id: playerId,
-            x: player.x / 1000,
-            y: player.y / 1000,
-            size: player.size / 1000,
-            startU: avatarData.uvX,
-            startV: avatarData.uvY,
-            endU: avatarData.uvX + avatarData.uvSize,
-            endV: avatarData.uvY + avatarData.uvSize,
-            r: player.r,
-            g: player.g,
-            b: player.b,
-          };
-          this.sprites.push(sprite);
+        this.sprites = [];
+        
+        for (const playerId in mpOp.players) {
+            const player = mpOp.players[playerId];
+            const id = player.id; // Default avatar ID if none specified
+            const avatarData = avaOp.loadedImages.get(id);
+            
+            if (avatarData) {
+              console.log('avatarData', avatarData);
+                const sprite = {
+                    id: playerId,
+                    x: (player.x-this.par.Posx)/1000,
+                    y: (player.y-this.par.Posy)/1000,
+                    size: player.size,
+                    startU: avatarData.uvX,
+                    startV: avatarData.uvY,
+                    endU: avatarData.uvX + avatarData.uvSize,
+                    endV: avatarData.uvY + avatarData.uvSize,
+                    r: 1.0,
+                    g: 1.0,
+                    b: 1.0
+                };
+                this.sprites.push(sprite);
+            }
         }
-      }
-
-      // Update the sprite buffer with new data
-      this.updateSpriteBuffer();
-
-      // Store current player IDs for next comparison
-      this._lastPlayerIds = currentPlayerIds;
+        
+        this.updateSpriteBuffer();
+        this._lastPlayerIds = currentPlayerIds;
     }
   }
 
-  updateDo() {
+  updateDo(){ 
     this.checkAvatars();
     this.render();
   }
 
+  render(){
+    var gl = this.gl;
+    
+    this.updateSpritePositions();
+    gl.useProgram(this.program);
+    gl.bindVertexArray(this.vao);  // Bind VAO before rendering
+
+    //INPUT UNIFORMS
+
+    if (this.inputs.length > 0){
+      let samplerIndices = new Int32Array(this.inputs.length);
+      for (let i = 0; i < this.inputs.length; i++){
+          samplerIndices[i] = i;
+          gl.activeTexture( gl.TEXTURE0 + i );
+          gl.bindTexture( gl.TEXTURE_2D, this.inputs[i].output.texture );
+          gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE);
+          gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
+          gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR);
+          gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.LINEAR);
+      }
+      gl.uniform1iv(this.program.uniformsCache['sTD2DInputs[0]'], samplerIndices);
+    }
+
+    //OUTPUT
+    if(!this.toScreen) gl.bindFramebuffer(gl.FRAMEBUFFER, this.output.framebuffer);
+    else gl.bindFramebuffer(gl.FRAMEBUFFER, null);
+    
+    gl.viewport(0, 0, this.width, this.height);
+    gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
+    gl.drawArraysInstanced(gl.TRIANGLES, 0, 6, this.numSprites);
+    
+    gl.bindVertexArray(null);  // Unbind VAO after rendering
+    gl.useProgram(null);
+  }
+
+
   updateSpritePositions() {
+    const orthowidthW = this.width/this.par.Scale;
+    const orthowidthH = this.height/this.par.Scale;
     const mpOp = this.par.Multiplayerop[0];
     if (!mpOp || !mpOp.players) return;
 
+    // Get array of player IDs
     const playerIds = Object.keys(mpOp.players);
-
+    
+    // Update positions in this.spriteData array
     for (let i = 0; i < this.numSprites; i++) {
-      const playerId = this.sprites[i].id;
-      if (!playerId) continue;
-
-      const player = mpOp.players[playerId];
-      const offset = i * 10;
-
-      this.spriteData[offset] = player.x / 1000 + 0.5; // x
-      this.spriteData[offset + 1] = player.y / 1000 + 0.5; // y
+        const playerId = this.sprites[i].id;
+        if (!playerId) continue;
+        
+        const player = mpOp.players[playerId];
+        const offset = i * 10;
+        
+        //=============== UPDATE PLAYERS POS:
+        this.spriteData[offset + 0] = (player.x - this.par.Posx) / orthowidthW+0.5; 
+        this.spriteData[offset + 1] = (player.y - this.par.Posy) / orthowidthH+0.5; 
+        this.spriteData[offset + 2] = player.size/this.width*this.par.Scale*this.par.Avascale;
+        
     }
-
+    
+    // Update the instance buffer
     const gl = this.gl;
     gl.bindBuffer(gl.ARRAY_BUFFER, this.instanceBuffer);
     gl.bufferData(gl.ARRAY_BUFFER, this.spriteData, gl.DYNAMIC_DRAW);
@@ -4007,1134 +3545,197 @@ void main()
 
   updateSpriteBuffer() {
     const gl = this.gl;
+    
+    // Calculate total number of sprites
     this.numSprites = this.sprites.length;
     this.spriteData = new Float32Array(this.numSprites * 10);
 
     for (let i = 0; i < this.numSprites; i++) {
-      const sprite = this.sprites[i];
-      const offset = i * 10;
-
-      this.spriteData[offset + 0] = sprite.x;
-      this.spriteData[offset + 1] = sprite.y;
-      this.spriteData[offset + 2] = sprite.size;
-      this.spriteData[offset + 3] = sprite.startU;
-      this.spriteData[offset + 4] = sprite.startV;
-      this.spriteData[offset + 5] = sprite.endU;
-      this.spriteData[offset + 6] = sprite.endV;
-      this.spriteData[offset + 7] = sprite.r;
-      this.spriteData[offset + 8] = sprite.g;
-      this.spriteData[offset + 9] = sprite.b;
+        const sprite = this.sprites[i];
+        const offset = i * 10;
+        
+        this.spriteData[offset + 0] = sprite.x;
+        this.spriteData[offset + 1] = sprite.y;
+        this.spriteData[offset + 2] = sprite.size*this.par.Avascale;
+        this.spriteData[offset + 3] = sprite.startU;
+        this.spriteData[offset + 4] = sprite.startV;
+        this.spriteData[offset + 5] = sprite.endU;
+        this.spriteData[offset + 6] = sprite.endV;
+        this.spriteData[offset + 7] = sprite.r;
+        this.spriteData[offset + 8] = sprite.g;
+        this.spriteData[offset + 9] = sprite.b;
     }
-
+    
+    // Update or create the buffer
     if (!this.instanceBuffer) {
-      this.instanceBuffer = gl.createBuffer();
+        this.instanceBuffer = gl.createBuffer();
     }
     gl.bindBuffer(gl.ARRAY_BUFFER, this.instanceBuffer);
     gl.bufferData(gl.ARRAY_BUFFER, this.spriteData, gl.DYNAMIC_DRAW);
   }
 
-  render() {
-    const gl = this.gl;
-    gl.useProgram(this.program);
-    gl.bindVertexArray(this.vao); // Bind VAO before rendering
-    this.updateSpritePositions();
+//=================== UI ==========================
 
-    //INPUT UNIFORMS
-    gl.useProgram(this.program);
-    if (this.inputs.length > 0) {
-      let samplerIndices = new Int32Array(this.inputs.length);
-      for (let i = 0; i < this.inputs.length; i++) {
-        samplerIndices[i] = i;
-        gl.activeTexture(gl.TEXTURE0 + i);
-        gl.bindTexture(gl.TEXTURE_2D, this.inputs[i].output.texture);
-        gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE);
-        gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
-        gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR);
-        gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.LINEAR);
-      }
-      gl.uniform1iv(
-        this.program.uniformsCache["sTD2DInputs[0]"],
-        samplerIndices
-      );
-    }
+  updateViewerCoord(viewport){
 
-    //OUTPUT
-    if (!this.toScreen)
-      gl.bindFramebuffer(gl.FRAMEBUFFER, this.output.framebuffer);
-    else gl.bindFramebuffer(gl.FRAMEBUFFER, null);
-
-    gl.viewport(0, 0, this.width, this.height);
-    gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
-
-    // Draw instanced sprites
-    gl.drawArraysInstanced(gl.TRIANGLES, 0, 6, this.numSprites);
-
-    gl.bindVertexArray(null); // Unbind VAO after rendering
-    gl.useProgram(null);
-  }
-
-  //======================= UI ======================
-
-  updateViewerCoord(viewport) {
     let rect = this.opUI.texture.getBoundingClientRect();
-    this.u0 = rect.left / viewport.width;
-    this.u1 = rect.right / viewport.width;
-    this.v0 = 1 - rect.bottom / viewport.height;
-    this.v1 = 1 - rect.top / viewport.height;
+    this.u0 = rect.left/viewport.width;
+    this.u1 = rect.right/viewport.width;
+    this.v0 = 1-rect.bottom/viewport.height;
+    this.v1 = 1-rect.top/viewport.height;
   }
-  createUIbyClass() {
-    this.opUI.op.style.backgroundColor = "rgba(0, 0, 0, 0.1)";
-
-    this.opUI.texture = document.createElement("div");
-    this.opUI.texture.classList.add("texture");
-    this.opUI.op.appendChild(this.opUI.texture);
-
-    this.opUI.name = document.createElement("div");
-    this.opUI.name.classList.add("topName");
-    this.opUI.op.appendChild(this.opUI.name);
-    this.opUI.name.textContent = this.name;
-
-    this.opUI.cook = document.createElement("div");
-    this.opUI.cook.classList.add("cook");
-    this.opUI.op.appendChild(this.opUI.cook);
-    this.opUI.cook.textContent = "0000";
-  }
-
-  updateUI() {
-    this.opUI.cook.textContent = ""; //(this.cook).toFixed(4);
-  }
-}
-
-//=============================== SPRITES =====================
-class ConvertedGLSLs_prizes extends OP {
-  constructor(name, time, gl) {
-    super(name, time, gl, true, ["Source"], ["Output"]);
-    this.gl = gl;
-    this.family = "TOP";
-    this.par.outputresolution = 9; //Output Resolution:  0: Use Input  1: Eighth  2: Quarter  3: Half  4: 2X  5: 4X  6: 8X  7: Fit Resolution  8: Limit Resolution  9: Custom Resolution  10: Parent Panel Size
-    this.par.resolutionw = 1000; //Resolution
-    this.par.resolutionh = 1000; //Resolution
-    this.width = 1000;
-    this.height = 1000;
-    this.fixedResInput = 0;
-    this.minInputs = 0;
-    this.maxInputs = 1;
-
-    this.sprites = [];
-    this.spriteData = null;
-    this.numSprites = 0;
-    this.vao = null; // Add VAO property
-
-    this.socket = null;
-    this.prizes = {};
-
-    this.vertexShader = `#version 300 es
-  in vec2 position;
-  in vec3 instancePosition; // x, y, size
-  in vec4 instanceTexCoords; // startU, startV, endU, endV
-  in vec3 instanceColor;    // r, g, b
-  out vec2 vUV;
-  out vec4 vTexCoords;
-  out vec3 vColor;
-  void main() {
-    vec2 pos = position * instancePosition.z + instancePosition.xy * 2.0 - 1.0;
-    gl_Position = vec4(pos, 0.0, 1.0);
-    vUV = position * 0.5 + 0.5;
-    vTexCoords = instanceTexCoords;
-    vColor = instanceColor;
-  }`;
-
-    this.fragmentShader = `#version 300 es
-  precision highp float;
-  in vec2 vUV;
-  in vec4 vTexCoords;
-  in vec3 vColor;
-  out vec4 fragColor;
-  uniform sampler2D sTD2DInputs[1];
-  @TDUniforms@
   
-void main()
-{  
-    float dist = length(vUV - vec2(0.5));
-    float alpha = smoothstep(0.5, 0.42, dist);
-    // vec2 texCoord = mix(vTexCoords.xy, vTexCoords.zw, vUV);
-    fragColor = vec4(vColor, alpha);
-}`;
 
-    this.program;
-    this.uniforms = [];
-    this.output;
-    this.resX;
-    this.resY;
-    this.buffer;
-    this.toScreen = false;
-  }
 
-  appendUniform(name, type, vals) {
-    var c = { name: name, type: type, vals: vals };
-    let existingUniform = this.uniforms.find((u) => u.name === name);
-    if (existingUniform) {
-      existingUniform.vals = vals;
-    } else {
-      this.uniforms.push(c);
-    }
-  }
+  //UI
+  createUIbyClass(){
 
-  createTarget(width, height, type) {
-    var target = {};
-    var gl = this.gl;
-    target.framebuffer = gl.createFramebuffer();
-    target.renderbuffer = gl.createRenderbuffer();
-    target.texture = gl.createTexture();
-    gl.bindTexture(gl.TEXTURE_2D, target.texture);
-    gl.texImage2D(
-      gl.TEXTURE_2D,
-      0,
-      gl.RGBA,
-      width,
-      height,
-      0,
-      gl.RGBA,
-      type,
-      null
-    );
-    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE);
-    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
-    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.LINEAR);
-    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR);
-    gl.bindFramebuffer(gl.FRAMEBUFFER, target.framebuffer);
-    gl.framebufferTexture2D(
-      gl.FRAMEBUFFER,
-      gl.COLOR_ATTACHMENT0,
-      gl.TEXTURE_2D,
-      target.texture,
-      0
-    );
-    gl.bindTexture(gl.TEXTURE_2D, null);
-    gl.bindRenderbuffer(gl.RENDERBUFFER, null);
-    gl.bindFramebuffer(gl.FRAMEBUFFER, null);
-    return target;
-  }
+    this.opUI.op.style.backgroundColor =  'rgba(0, 0, 0, 0.1)';
 
-  createShader(src, type) {
-    var shader = this.gl.createShader(type);
-    this.gl.shaderSource(shader, src);
-    this.gl.compileShader(shader);
-    if (!this.gl.getShaderParameter(shader, this.gl.COMPILE_STATUS)) {
-      console.error(
-        "Shader compile error:",
-        this.path,
-        this.gl.getShaderInfoLog(shader)
-      );
-      const shaderSourceLines = src.split("\n");
-      shaderSourceLines.forEach((line, index) => {
-        console.log(`${index + 1}: ${line}`);
-      });
-      this.gl.deleteShader(shader);
-      return null;
-    }
-    // console.log(this.name, src);
-    return shader;
-  }
-
-  cacheUniformLocation(program, label) {
-    if (program.uniformsCache === undefined) {
-      program.uniformsCache = {};
-    }
-    program.uniformsCache[label] = this.gl.getUniformLocation(program, label);
-  }
-
-  setResolution() {
-    if (this.par.outputresolution == 0) {
-      //USE INPUT
-      if (this.inputs.length == 0) {
-        this.width = this.par.resolutionw;
-        this.height = this.par.resolutionh;
-      } else {
-        const inOp = this.inputs[this.fixedResInput];
-        // console.log('=========>> RES FROM INPUT',inOp.name)
-        this.width = inOp.width;
-        this.height = inOp.height;
-      }
-    }
-    if (this.par.outputresolution == 9) {
-      this.width = this.par.resolutionw;
-      this.height = this.par.resolutionh;
-    }
-
-    if (this.par.outputresolution == 10) {
-      this.width = this.gl.drawingBufferWidth;
-      this.height = this.gl.drawingBufferHeight;
-    }
-
-    this.appendUniform("resolution", "2f", [this.width, this.height]);
-
-    let N = this.inputs.length;
-    if (N > 0) {
-      for (let i = 0; i < N; i++) {
-        this.appendUniform(`uTD2DInfos[${i}].res`, "4f", [
-          1 / this.inputs[i].width,
-          1 / this.inputs[i].height,
-          this.inputs[i].width,
-          this.inputs[i].height,
-        ]);
-        this.appendUniform(`uTD2DInfos[${i}].depth`, "4f", [1, 1, 1, 1]);
-      }
-    }
-  }
-
-  insertTDUniforms() {
-    let example = "";
-    let texInfoArray = [];
-    let N = this.inputs.length;
-
-    if (N > 0) {
-      for (let i = 0; i < N; i++) {
-        texInfoArray.push(
-          `TDTexInfo(vec4(1./${Math.round(
-            this.inputs[i].width
-          )}., 1./${Math.round(this.inputs[i].height)}., ${Math.round(
-            this.inputs[i].width
-          )}., ${Math.round(this.inputs[i].height)}.), vec4(1.))`
-        );
-      }
-      example = `
-  struct TDTexInfo {
-    vec4 res;
-    vec4 depth;
-  };
-
-  uniform TDTexInfo uTD2DInfos[${N}];
-  const int TD_NUM_2D_INPUTS = ${N};`;
-    }
-
-    this.fragmentShader = this.fragmentShader.replace("@TDUniforms@", example);
-  }
-
-  disposeResources() {
-    const gl = this.gl;
-
-    // Delete VAO
-    if (this.vao) {
-      gl.deleteVertexArray(this.vao);
-      this.vao = null;
-    }
-
-    // Delete shader program and shaders
-    if (this.program) {
-      gl.deleteProgram(this.program);
-      this.program = null;
-    }
-    if (this.vs) {
-      gl.deleteShader(this.vs);
-      this.vs = null;
-    }
-    if (this.fs) {
-      gl.deleteShader(this.fs);
-      this.fs = null;
-    }
-
-    // Delete vertex buffer
-    if (this.buffer) {
-      gl.deleteBuffer(this.buffer);
-      this.buffer = null;
-    }
-
-    // Delete output target resources (framebuffer, renderbuffer, texture)
-    if (this.output) {
-      if (this.output.framebuffer)
-        gl.deleteFramebuffer(this.output.framebuffer);
-      if (this.output.renderbuffer)
-        gl.deleteRenderbuffer(this.output.renderbuffer);
-      if (this.output.texture) gl.deleteTexture(this.output.texture);
-      this.output = null;
-    }
-
-    // Add instance buffer cleanup
-    if (this.instanceBuffer) {
-      gl.deleteBuffer(this.instanceBuffer);
-      this.instanceBuffer = null;
-    }
-
-    // If you have any additional resources, delete them here.
-  }
-
-  doInit() {
-    // console.log('&&& DO INIT TOP');
-    // this.disposeResources();
-    this.setResolution();
-    this.insertTDUniforms();
-    this.compile();
-    // console.log(this.name, ' shader:\n',this.fragmentShader);
-  }
-
-  onResize() {}
-
-  resize() {
-    for (let j = 0; j < this.inputs.length; j++) {
-      this.inputs[j].resize();
-    }
-
-    this.setResolution();
-    try {
-      this.gl.useProgram(this.program);
-
-      //RESOLUTION RELATED UNIFORMS ===============
-      if (
-        this.program.uniformsCache &&
-        this.program.uniformsCache["resolution"]
-      ) {
-        this.gl.uniform2f(
-          this.program.uniformsCache["resolution"],
-          this.width,
-          this.height
-        );
-      }
-      let N = this.inputs.length;
-      if (N > 0) {
-        for (let i = 0; i < N; i++) {
-          this.gl.uniform4f(
-            this.program.uniformsCache[`uTD2DInfos[${i}].res`],
-            1 / this.inputs[i].width,
-            1 / this.inputs[i].height,
-            this.inputs[i].width,
-            this.inputs[i].height
-          );
-          this.gl.uniform4f(
-            this.program.uniformsCache[`uTD2DInfos[${i}].depth`],
-            1,
-            1,
-            1,
-            1
-          );
-        }
-      }
-      this.gl.useProgram(null);
-      this.output = this.createTarget(
-        this.width,
-        this.height,
-        this.gl.UNSIGNED_BYTE
-      );
-    } catch (e) {
-      console.error("catched: ", e);
-    }
-
-    this.onResize();
-  }
-
-  compile() {
-    const gl = this.gl;
-
-    // Create and bind VAO
-    this.vao = gl.createVertexArray();
-    gl.bindVertexArray(this.vao);
-
-    // Create a buffer for the quad vertices
-    const quadVertices = new Float32Array([
-      -1, -1, 1, -1, -1, 1, -1, 1, 1, -1, 1, 1,
-    ]);
-
-    this.updateSpriteBuffer();
-
-    this.buffer = this.gl.createBuffer();
-    this.gl.bindBuffer(gl.ARRAY_BUFFER, this.buffer);
-    this.gl.bufferData(gl.ARRAY_BUFFER, quadVertices, gl.STATIC_DRAW);
-
-    // Create instance data buffer
-    this.instanceBuffer = this.gl.createBuffer();
-    this.gl.bindBuffer(gl.ARRAY_BUFFER, this.instanceBuffer);
-    this.gl.bufferData(gl.ARRAY_BUFFER, this.spriteData, gl.DYNAMIC_DRAW);
-
-    // Create and link program
-    this.program = gl.createProgram();
-    this.vs = this.createShader(this.vertexShader, this.gl.VERTEX_SHADER);
-    this.fs = this.createShader(this.fragmentShader, this.gl.FRAGMENT_SHADER);
-    if (this.vs == null || this.fs == null) return null;
-
-    gl.attachShader(this.program, this.vs);
-    gl.attachShader(this.program, this.fs);
-    gl.deleteShader(this.vs);
-    gl.deleteShader(this.fs);
-    gl.linkProgram(this.program);
-    if (!gl.getProgramParameter(this.program, this.gl.LINK_STATUS)) {
-      var error = gl.getProgramInfoLog(this.program);
-      console.log(this.name, "fragmentShader:");
-      console.log(this.fragmentShader);
-      console.log(this.vertexShader);
-      console.error(error);
-      console.error(
-        "VALIDATE_STATUS: " +
-          this.gl.getProgramParameter(this.program, this.gl.VALIDATE_STATUS),
-        "ERROR: " + this.gl.getError()
-      );
-      let err = this.gl.getShaderInfoLog(this.fs);
-      err = err.split("ERROR:")[1].split(":")[1];
-      console.error(
-        this.name +
-          "  " +
-          this.gl.getShaderInfoLog(this.fs) +
-          "\n" +
-          err +
-          "\n" +
-          this.fragmentShader.split("\n")[err - 1]
-      );
-
-      return;
-    }
-
-    // Set up attributes
-    this.gl.useProgram(this.program);
-
-    // Position attribute (vertices)
-    this.screenVertexPosition = this.gl.getAttribLocation(
-      this.program,
-      "position"
-    );
-    gl.enableVertexAttribArray(this.screenVertexPosition);
-    gl.bindBuffer(gl.ARRAY_BUFFER, this.buffer);
-    gl.vertexAttribPointer(this.screenVertexPosition, 2, gl.FLOAT, false, 0, 0);
-
-    // Instance attributes
-    const instancePosLoc = gl.getAttribLocation(
-      this.program,
-      "instancePosition"
-    );
-    const instanceTexCoordsLoc = gl.getAttribLocation(
-      this.program,
-      "instanceTexCoords"
-    );
-    const instanceColorLoc = gl.getAttribLocation(
-      this.program,
-      "instanceColor"
-    );
-
-    gl.bindBuffer(gl.ARRAY_BUFFER, this.instanceBuffer);
-
-    // Position attribute (x, y, size)
-    gl.enableVertexAttribArray(instancePosLoc);
-    gl.vertexAttribPointer(instancePosLoc, 3, gl.FLOAT, false, 40, 0);
-    gl.vertexAttribDivisor(instancePosLoc, 1);
-
-    // Texture coordinates attribute (startU, startV, endU, endV)
-    gl.enableVertexAttribArray(instanceTexCoordsLoc);
-    gl.vertexAttribPointer(instanceTexCoordsLoc, 4, gl.FLOAT, false, 40, 12);
-    gl.vertexAttribDivisor(instanceTexCoordsLoc, 1);
-
-    // Color attribute (r, g, b)
-    gl.enableVertexAttribArray(instanceColorLoc);
-    gl.vertexAttribPointer(instanceColorLoc, 3, gl.FLOAT, false, 40, 28);
-    gl.vertexAttribDivisor(instanceColorLoc, 1);
-
-    //UNIFORMS
-    for (var key in this.uniforms) {
-      this.cacheUniformLocation(this.program, this.uniforms[key]["name"]);
-    }
-
-    if (this.inputs.length > 0) {
-      this.cacheUniformLocation(this.program, "sTD2DInputs[0]");
-    }
-
-    // Load program0 into GPU
-    this.gl.useProgram(this.program);
-    this.screenVertexPosition = this.gl.getAttribLocation(
-      this.program,
-      "position"
-    );
-    gl.enableVertexAttribArray(this.screenVertexPosition);
-
-    //UNIFORMS SET VALS
-    for (var key in this.uniforms) {
-      if (this.uniforms[key]["type"] == "1f")
-        this.gl.uniform1f(
-          this.program.uniformsCache[this.uniforms[key]["name"]],
-          this.uniforms[key]["vals"][0]
-        );
-      if (this.uniforms[key]["type"] == "2f")
-        this.gl.uniform2f(
-          this.program.uniformsCache[this.uniforms[key]["name"]],
-          this.uniforms[key]["vals"][0],
-          this.uniforms[key]["vals"][1]
-        );
-      if (this.uniforms[key]["type"] == "3f")
-        this.gl.uniform3f(
-          this.program.uniformsCache[this.uniforms[key]["name"]],
-          this.uniforms[key]["vals"][0],
-          this.uniforms[key]["vals"][1],
-          this.uniforms[key]["vals"][2]
-        );
-      if (this.uniforms[key]["type"] == "4f")
-        this.gl.uniform4f(
-          this.program.uniformsCache[this.uniforms[key]["name"]],
-          this.uniforms[key]["vals"][0],
-          this.uniforms[key]["vals"][1],
-          this.uniforms[key]["vals"][2],
-          this.uniforms[key]["vals"][3]
-        );
-      if (this.uniforms[key]["name"] == "resolution")
-        this.gl.uniform2f(
-          this.program.uniformsCache[this.uniforms[key]["name"]],
-          this.width,
-          this.height
-        );
-      if (this.uniforms[key]["name"] == "res")
-        this.gl.uniform2f(
-          this.program.uniformsCache[this.uniforms[key]["name"]],
-          this.width,
-          this.height
-        );
-    }
-
-    //OUTPUT
-    this.output = this.createTarget(this.width, this.height, gl.UNSIGNED_BYTE);
-    // this.output = this.createTarget( this.width, this.height, gl.FLOAT );
-    gl.useProgram(null);
-    gl.bindVertexArray(null);
-  }
-
-  //================== END OF COMPILE ======================
-
-  setUniform1f(name, vals) {
-    gl.useProgram(this.program);
-    this.gl.uniform1f(this.program.uniformsCache[name], vals[0]);
-    gl.useProgram(null);
-  }
-
-  setUniform2f(name, vals) {
-    gl.useProgram(this.program);
-    this.gl.uniform2f(this.program.uniformsCache[name], vals[0], vals[1]);
-    gl.useProgram(null);
-  }
-
-  setUniform3f(name, vals) {
-    gl.useProgram(this.program);
-    this.gl.uniform3f(
-      this.program.uniformsCache[name],
-      vals[0],
-      vals[1],
-      vals[2]
-    );
-    gl.useProgram(null);
-  }
-
-  setUniform4f(name, vals) {
-    gl.useProgram(this.program);
-    this.gl.uniform4f(
-      this.program.uniformsCache[name],
-      vals[0],
-      vals[1],
-      vals[2],
-      vals[3]
-    );
-    gl.useProgram(null);
-  }
-
-  checkAvatars() {
-    const mpOp = this.par.Multiplayerop[0];
-
-    if (!mpOp || !mpOp.prizes) return;
-
-    const currentPrizeIds = Object.keys(mpOp.prizes);
-
-    // Check if players changed by comparing with previous state
-    const prizesChanged =
-      !this._lastPrizeIds ||
-      this._lastPrizeIds.length !== currentPrizeIds.length ||
-      !this._lastPrizeIds.every((id) => currentPrizeIds.includes(id));
-
-    if (prizesChanged) {
-      this.sprites = [];
-
-      // Create sprites for each player
-      for (const prizeId in mpOp.prizes) {
-        const prize = mpOp.prizes[prizeId];
-        const sprite = {
-          id: prizeId,
-          x: prize.x / 1000,
-          y: prize.y / 1000,
-          size: prize.size / 1000,
-          startU: 0,
-          startV: 0,
-          endU: 1,
-          endV: 1,
-          r: 1,
-          g: 1,
-          b: 1,
-        };
-        this.sprites.push(sprite);
-      }
-
-      // Update the sprite buffer with new data
-      this.updateSpriteBuffer();
-
-      // Store current player IDs for next comparison
-      this._lastPrizeIds = currentPrizeIds;
-    }
-  }
-
-  updateDo() {
-    this.checkAvatars();
-    this.render();
-  }
-
-  updateSpritePositions() {
-    const mpOp = this.par.Multiplayerop[0];
-    if (!mpOp || !mpOp.prizes) return;
-
-    const prizeIds = Object.keys(mpOp.prizes);
-
-    for (let i = 0; i < this.numSprites; i++) {
-      const prizeId = this.sprites[i].id;
-      if (!prizeId) continue;
-
-      const prize = mpOp.prizes[prizeId];
-      const offset = i * 10;
-
-      //NON INFINITE
-      this.spriteData[offset + 0] =
-        (((prize.x + 500) % 1000) - 500) / 1000 + 0.5; // x
-      this.spriteData[offset + 1] =
-        (((prize.y + 500) % 1000) - 500) / 1000 + 0.5; // y
-    }
-
-    const gl = this.gl;
-    gl.bindBuffer(gl.ARRAY_BUFFER, this.instanceBuffer);
-    gl.bufferData(gl.ARRAY_BUFFER, this.spriteData, gl.DYNAMIC_DRAW);
-  }
-
-  updateSpriteBuffer() {
-    const gl = this.gl;
-    this.numSprites = this.sprites.length;
-    this.spriteData = new Float32Array(this.numSprites * 10);
-
-    for (let i = 0; i < this.numSprites; i++) {
-      const sprite = this.sprites[i];
-      const offset = i * 10;
-
-      this.spriteData[offset + 0] = sprite.x;
-      this.spriteData[offset + 1] = sprite.y;
-      this.spriteData[offset + 2] = sprite.size * this.par.Globalscale;
-      this.spriteData[offset + 3] = sprite.startU;
-      this.spriteData[offset + 4] = sprite.startV;
-      this.spriteData[offset + 5] = sprite.endU;
-      this.spriteData[offset + 6] = sprite.endV;
-      this.spriteData[offset + 7] = sprite.r;
-      this.spriteData[offset + 8] = sprite.g;
-      this.spriteData[offset + 9] = sprite.b;
-    }
-
-    if (!this.instanceBuffer) {
-      this.instanceBuffer = gl.createBuffer();
-    }
-    gl.bindBuffer(gl.ARRAY_BUFFER, this.instanceBuffer);
-    gl.bufferData(gl.ARRAY_BUFFER, this.spriteData, gl.DYNAMIC_DRAW);
-  }
-
-  render() {
-    const gl = this.gl;
-    gl.useProgram(this.program);
-    gl.bindVertexArray(this.vao); // Bind VAO before rendering
-    this.updateSpritePositions();
-
-    //INPUT UNIFORMS
-    gl.useProgram(this.program);
-    if (this.inputs.length > 0) {
-      let samplerIndices = new Int32Array(this.inputs.length);
-      for (let i = 0; i < this.inputs.length; i++) {
-        samplerIndices[i] = i;
-        gl.activeTexture(gl.TEXTURE0 + i);
-        gl.bindTexture(gl.TEXTURE_2D, this.inputs[i].output.texture);
-        gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE);
-        gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
-        gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR);
-        gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.LINEAR);
-      }
-      gl.uniform1iv(
-        this.program.uniformsCache["sTD2DInputs[0]"],
-        samplerIndices
-      );
-    }
-
-    //OUTPUT
-    if (!this.toScreen)
-      gl.bindFramebuffer(gl.FRAMEBUFFER, this.output.framebuffer);
-    else gl.bindFramebuffer(gl.FRAMEBUFFER, null);
-
-    gl.viewport(0, 0, this.width, this.height);
-    gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
-
-    // Draw instanced sprites
-    gl.drawArraysInstanced(gl.TRIANGLES, 0, 6, this.numSprites);
-
-    gl.bindVertexArray(null); // Unbind VAO after rendering
-    gl.useProgram(null);
-  }
-
-  //======================= UI ======================
-
-  updateViewerCoord(viewport) {
-    let rect = this.opUI.texture.getBoundingClientRect();
-    this.u0 = rect.left / viewport.width;
-    this.u1 = rect.right / viewport.width;
-    this.v0 = 1 - rect.bottom / viewport.height;
-    this.v1 = 1 - rect.top / viewport.height;
-  }
-  createUIbyClass() {
-    this.opUI.op.style.backgroundColor = "rgba(0, 0, 0, 0.1)";
-
-    this.opUI.texture = document.createElement("div");
-    this.opUI.texture.classList.add("texture");
+    this.opUI.texture = document.createElement('div');
+    this.opUI.texture.classList.add('texture');
     this.opUI.op.appendChild(this.opUI.texture);
-
-    this.opUI.name = document.createElement("div");
-    this.opUI.name.classList.add("topName");
+    
+    this.opUI.name = document.createElement('div');
+    this.opUI.name.classList.add('topName');
     this.opUI.op.appendChild(this.opUI.name);
-    this.opUI.name.textContent = this.name;
+    this.opUI.name.textContent = this.name
 
-    this.opUI.cook = document.createElement("div");
-    this.opUI.cook.classList.add("cook");
+    this.opUI.cook = document.createElement('div');
+    this.opUI.cook.classList.add('cook');
     this.opUI.op.appendChild(this.opUI.cook);
-    this.opUI.cook.textContent = "0000";
+    this.opUI.cook.textContent = '0000';
   }
 
-  updateUI() {
-    this.opUI.cook.textContent = ""; //(this.cook).toFixed(4);
+  updateUI(){
+    this.opUI.cook.textContent = '';//(this.cook).toFixed(4);
+    
   }
+  
 
-  setupSocketHandlers(socket) {
-    if (!socket) return;
-
-    this.socket = socket;
-
-    // Listen for prizes_update event from the server
-    this.socket.on("prizes_update", (prizes) => {
-      console.log("Prizes updated in artwork.js:", Object.keys(prizes).length);
-      this.prizes = prizes;
-      this.updatePrizesFromServer();
-    });
-
-    // Listen for prize_spawned event from the server
-    this.socket.on("prize_spawned", (prize) => {
-      console.log("New prize spawned in artwork.js:", prize);
-      if (!this.prizes) this.prizes = {};
-      this.prizes[prize.id] = prize;
-      this.updatePrizesFromServer();
-    });
-
-    // Listen for prize_claimed event from the server
-    this.socket.on("prize_claimed", (claimData) => {
-      console.log("Prize claimed in artwork.js:", claimData);
-      if (this.prizes && this.prizes[claimData.prizeId]) {
-        delete this.prizes[claimData.prizeId];
-        this.updatePrizesFromServer();
-      }
-    });
-  }
-
-  updatePrizesFromServer() {
-    if (!this.prizes) return;
-
-    // Clear existing prize sprites
-    this.sprites = [];
-
-    // Add all prizes as sprites
-    for (const prizeId in this.prizes) {
-      const prize = this.prizes[prizeId];
-
-      // Skip if position is missing
-      if (
-        !prize.position ||
-        typeof prize.position.x !== "number" ||
-        typeof prize.position.y !== "number"
-      ) {
-        continue;
-      }
-
-      // Different colors for different prize types
-      let r = 1.0,
-        g = 0.8,
-        b = 0.2; // Default coin color (gold)
-
-      if (prize.type === "powerup") {
-        r = 0.2;
-        g = 0.8;
-        b = 1.0; // Blue for powerups
-      } else if (prize.type === "token") {
-        r = 0.9;
-        g = 0.5;
-        b = 0.1; // Orange for tokens
-      }
-
-      this.sprites.push({
-        id: prizeId,
-        x: prize.position.x / 1000,
-        y: prize.position.y / 1000,
-        size: 0.05, // Make prizes clearly visible
-        startU: 0,
-        startV: 0,
-        endU: 1,
-        endV: 1,
-        r: r,
-        g: g,
-        b: b,
-        isPrize: true,
-      });
-    }
-
-    // Update sprite buffer
-    this.updateSpriteBuffer();
-    console.log("Updated prizes in artwork.js - count:", this.sprites.length);
-  }
 }
 
-// Add code to make the prizes engine connect when game engine connects
-function connectGameToSocket(socket) {
-  if (!socket) return;
 
-  console.log("Connecting game engines to socket in artwork.js");
-
-  // Initialize prizes engine if it exists
-  if (window.prizesEngine) {
-    window.prizesEngine.setupSocketHandlers(socket);
-
-    // Request prizes once connected
-    socket.on("authenticated", () => {
-      console.log("Requesting prizes from server in artwork.js");
-      socket.emit("requestPrizes", {});
-    });
-  }
-
-  // Handle player-related events
-  socket.on("players_update", (players) => {
-    console.log("Received players update in artwork.js");
-    if (
-      window.gameEngine &&
-      typeof window.gameEngine.updatePlayers === "function"
-    ) {
-      window.gameEngine.updatePlayers(players);
-    }
-  });
-
-  socket.on("userMoved", (data) => {
-    if (
-      window.gameEngine &&
-      window.gameEngine.par &&
-      window.gameEngine.par.Multiplayerop
-    ) {
-      const multiplayerOp = window.gameEngine.par.Multiplayerop[0];
-      if (multiplayerOp && multiplayerOp.players) {
-        const player = multiplayerOp.players[data.id];
-        if (player) {
-          player.x = data.position.x;
-          player.y = data.position.y;
-        }
-      }
-    }
-  });
-
-  socket.on("newPlayer", (data) => {
-    console.log("New player joined in artwork.js:", data);
-    if (
-      window.gameEngine &&
-      typeof window.gameEngine.addPlayer === "function"
-    ) {
-      window.gameEngine.addPlayer(data.id, data.position);
-    }
-  });
-
-  socket.on("userLeft", (data) => {
-    console.log("Player left in artwork.js:", data);
-    if (
-      window.gameEngine &&
-      typeof window.gameEngine.removePlayer === "function"
-    ) {
-      window.gameEngine.removePlayer(data.id);
-    }
-  });
-
-  // Prize-related events are already handled in prizesEngine.setupSocketHandlers
-
-  // Handle prize claims by the current player
-  socket.on("got_prize", (prize) => {
-    console.log("You collected a prize in artwork.js:", prize);
-    // This event will be handled by the UI in Game.tsx
-  });
-}
-
-// Make this function globally available
-window.connectGameToSocket = connectGameToSocket;
 
 //----------------------INIT CANVAS AND ON RESIZE ----------------
 
 let play = true;
 let gl;
-let canvasGl = document.getElementById("canvas");
+let canvasGl = document.getElementById('canvas');
 try {
   // gl = canvasGl.getContext( 'webgl2', { preserveDrawingBuffer: true } );
-  gl = canvasGl.getContext("webgl2", {
-    preserveDrawingBuffer: true,
-    antialias: false,
-  });
-} catch (error) {}
-if (!gl) {
+  gl = canvasGl.getContext( 'webgl2', { preserveDrawingBuffer: true,antialias: false } );
+} catch( error ) { }
+if ( !gl ) {
   alert("NotSupported");
 } else {
-  gl.getExtension("OES_standard_derivatives");
-  gl.getExtension("OES_texture_float");
-  gl.getExtension("OES_texture_float_linear");
+  gl.getExtension('OES_standard_derivatives');
+  gl.getExtension( 'OES_texture_float' );
+  gl.getExtension( 'OES_texture_float_linear' );
 }
+
 
 function throttle(func, limit) {
   let lastFunc;
   let lastRan;
-  return function (...args) {
+  return function(...args) {
     const context = this;
     if (!lastRan) {
       func.apply(context, args);
       lastRan = Date.now();
     } else {
       clearTimeout(lastFunc);
-      lastFunc = setTimeout(function () {
-        if (Date.now() - lastRan >= limit) {
+      lastFunc = setTimeout(function() {
+        if ((Date.now() - lastRan) >= limit) {
           func.apply(context, args);
           lastRan = Date.now();
         }
       }, limit - (Date.now() - lastRan));
     }
-  };
-}
-
-function onNeedResizeCanvas(event) {
-  var W = window.innerWidth;
-  var H = window.innerHeight;
-
-  // const dpr = window.devicePixelRatio || 1;
-  // W = canvasGl.width * dpr;
-  // W = canvasGl.height * dpr;
-  // gl.scale(dpr, dpr);
-
-  canvasGl.width = W;
-  canvasGl.height = H;
-
-  canvasGl.style.width = W + "px";
-  canvasGl.style.height = H + "px";
-  // canvasGl.style.zIndex = "2";
-  if (gl) {
-    gl.viewport(0, 0, canvasGl.width, canvasGl.height);
   }
 }
 
-onNeedResizeCanvas();
+function onNeedResizeCanvas( event ) {
+    var W = window.innerWidth;
+    var H = window.innerHeight;
+    
+    // const dpr = window.devicePixelRatio || 1;
+    // W = canvasGl.width * dpr;
+    // W = canvasGl.height * dpr;
+    // gl.scale(dpr, dpr);
+    
+    canvasGl.width = W;
+    canvasGl.height = H;
+
+    canvasGl.style.width = W + 'px';
+    canvasGl.style.height = H + 'px';
+    // canvasGl.style.zIndex = "2";
+    if (gl) {
+      gl.viewport( 0, 0, canvasGl.width, canvasGl.height );
+    }
+  }
+
+  onNeedResizeCanvas();
 //===============================Network ========================
 let theTime = new Time();
 let OPs = [];
 
-let convertedGLSLs_end = new OutTOP("end", theTime, gl);
-let convertedGLSLs_null10 = new GlslmultiTOP("null10", theTime, gl);
-let convertedGLSLs_over6 = new GlslmultiTOP("over6", theTime, gl);
-let convertedGLSLs_spritesAva = new ConvertedGLSLs_spritesAva(
-  "spritesAva",
-  theTime,
-  gl
-);
-let convertedGLSLs_multiplayerAvaLoader =
-  new ConvertedGLSLs_multiplayerAvaLoader("multiplayerAvaLoader", theTime, gl);
-let convertedGLSLs_multiplayerCHOP = new ConvertedGLSLs_multiplayerCHOP(
-  "multiplayerCHOP",
-  theTime,
-  gl
-);
-let convertedGLSLs_trigger1 = new TriggerCHOP("trigger1", theTime, gl);
-let convertedGLSLs_przeSound = new ConstantCHOP("przeSound", theTime, gl);
-let convertedGLSLs = new ContainerCOMP("convertedGLSLs", theTime, gl);
-let convertedGLSLs_viewportCHOP = new ConvertedGLSLs_viewportCHOP(
-  "viewportCHOP",
-  theTime,
-  gl
-);
-let convertedGLSLs_speedLimit = new LimitCHOP("speedLimit", theTime, gl);
-let convertedGLSLs_math1 = new MathCHOP("math1", theTime, gl);
-let convertedGLSLs_orthoMove = new ConvertedGLSLs_orthoMove(
-  "orthoMove",
-  theTime,
-  gl
-);
-let convertedGLSLs_inputs_out1 = new OutCHOP("out1", theTime, gl);
-let convertedGLSLs_inputs_math8 = new MathCHOP("math8", theTime, gl);
-let convertedGLSLs_inputs_merge3 = new MergeCHOP("merge3", theTime, gl);
-let convertedGLSLs_inputs_math5 = new MathCHOP("math5", theTime, gl);
-let convertedGLSLs_inputs_select1 = new SelectCHOP("select1", theTime, gl);
-let convertedGLSLs_inputs_null9 = new NullCHOP("null9", theTime, gl);
-let convertedGLSLs_inputs_math1 = new MathCHOP("math1", theTime, gl);
-let convertedGLSLs_inputs_keyboardin1 = new KeyboardinCHOP(
-  "keyboardin1",
-  theTime,
-  gl
-);
-let convertedGLSLs_inputs = new BaseCOMP("inputs", theTime, gl);
-let convertedGLSLs_inputs_math6 = new MathCHOP("math6", theTime, gl);
-let convertedGLSLs_inputs_select2 = new SelectCHOP("select2", theTime, gl);
-let convertedGLSLs_inputs_math7 = new MathCHOP("math7", theTime, gl);
-let convertedGLSLs_inputs_limit1 = new LimitCHOP("limit1", theTime, gl);
-let convertedGLSLs_inputs_math4 = new MathCHOP("math4", theTime, gl);
-let convertedGLSLs_inputs_math3 = new MathCHOP("math3", theTime, gl);
-let convertedGLSLs_inputs_hold1 = new HoldCHOP("hold1", theTime, gl);
-let convertedGLSLs_inputs_select3 = new SelectCHOP("select3", theTime, gl);
-let convertedGLSLs_inputs_mousein2 = new MouseinCHOP("mousein2", theTime, gl);
-let convertedGLSLs_inputs_select4 = new SelectCHOP("select4", theTime, gl);
-let convertedGLSLs_inputs_merge1 = new MergeCHOP("merge1", theTime, gl);
-let convertedGLSLs_playerXY = new NullCHOP("playerXY", theTime, gl);
-let convertedGLSLs_null5 = new NullCHOP("null5", theTime, gl);
-let convertedGLSLs_speed3 = new SpeedCHOP("speed3", theTime, gl);
-let convertedGLSLs_filter2 = new FilterCHOP("filter2", theTime, gl);
-let convertedGLSLs_mousein1 = new MouseinCHOP("mousein1", theTime, gl);
-let convertedGLSLs_circle2 = new MoviefileinTOP("circle2", theTime, gl);
-let convertedGLSLs_scale = new SelectCHOP("scale", theTime, gl);
-let convertedGLSLs_null2 = new NullCHOP("null2", theTime, gl);
-let convertedGLSLs_lfo7 = new LfoCHOP("lfo7", theTime, gl);
-let convertedGLSLs_math15 = new MathCHOP("math15", theTime, gl);
-let convertedGLSLs_null14 = new NullCHOP("null14", theTime, gl);
-let convertedGLSLs_over2 = new GlslmultiTOP("over2", theTime, gl);
-let convertedGLSLs_viewport3 = new GlslmultiTOP("viewport3", theTime, gl);
-let convertedGLSLs_circles = new ConvertedGLSLs_circles("circles", theTime, gl);
-let convertedGLSLs_transform1 = new GlslmultiTOP("transform1", theTime, gl);
-let convertedGLSLs_constant4 = new GlslmultiTOP("constant4", theTime, gl);
-let convertedGLSLs_null4 = new NullCHOP("null4", theTime, gl);
-let convertedGLSLs_math2 = new MathCHOP("math2", theTime, gl);
-let convertedGLSLs_merge2 = new MergeCHOP("merge2", theTime, gl);
-let convertedGLSLs_null1 = new NullCHOP("null1", theTime, gl);
-let convertedGLSLs_viewport4 = new GlslmultiTOP("viewport4", theTime, gl);
-let convertedGLSLs_prizes = new ConvertedGLSLs_prizes("prizes", theTime, gl);
-let convertedGLSLs_circle3 = new MoviefileinTOP("circle3", theTime, gl);
+let convertedGLSLs_end = new OutTOP('end',theTime,gl);
+let convertedGLSLs_viewport2 = new GlslmultiTOP('viewport2',theTime,gl);
+let convertedGLSLs_level1 = new GlslmultiTOP('level1',theTime,gl);
+let convertedGLSLs_circles = new ConvertedGLSLs_circles('circles',theTime,gl);
+let convertedGLSLs_circle2 = new MoviefileinTOP('circle2',theTime,gl);
+let convertedGLSLs = new ContainerCOMP('convertedGLSLs',theTime,gl);
+let convertedGLSLs_multiplayerCHOP = new ConvertedGLSLs_multiplayerCHOP('multiplayerCHOP',theTime,gl);
+let convertedGLSLs_viewportCHOP = new ConvertedGLSLs_viewportCHOP('viewportCHOP',theTime,gl);
+let convertedGLSLs_speedLimit = new LimitCHOP('speedLimit',theTime,gl);
+let convertedGLSLs_math1 = new MathCHOP('math1',theTime,gl);
+let convertedGLSLs_orthoMove = new ConvertedGLSLs_orthoMove('orthoMove',theTime,gl);
+let convertedGLSLs_inputs_out1 = new OutCHOP('out1',theTime,gl);
+let convertedGLSLs_inputs_math8 = new MathCHOP('math8',theTime,gl);
+let convertedGLSLs_inputs_merge3 = new MergeCHOP('merge3',theTime,gl);
+let convertedGLSLs_inputs_math5 = new MathCHOP('math5',theTime,gl);
+let convertedGLSLs_inputs_select1 = new SelectCHOP('select1',theTime,gl);
+let convertedGLSLs_inputs_null9 = new NullCHOP('null9',theTime,gl);
+let convertedGLSLs_inputs_math1 = new MathCHOP('math1',theTime,gl);
+let convertedGLSLs_inputs_keyboardin1 = new KeyboardinCHOP('keyboardin1',theTime,gl);
+let convertedGLSLs_inputs = new BaseCOMP('inputs',theTime,gl);
+let convertedGLSLs_inputs_math6 = new MathCHOP('math6',theTime,gl);
+let convertedGLSLs_inputs_select2 = new SelectCHOP('select2',theTime,gl);
+let convertedGLSLs_inputs_math7 = new MathCHOP('math7',theTime,gl);
+let convertedGLSLs_inputs_limit1 = new LimitCHOP('limit1',theTime,gl);
+let convertedGLSLs_inputs_math4 = new MathCHOP('math4',theTime,gl);
+let convertedGLSLs_inputs_math3 = new MathCHOP('math3',theTime,gl);
+let convertedGLSLs_inputs_hold1 = new HoldCHOP('hold1',theTime,gl);
+let convertedGLSLs_inputs_select3 = new SelectCHOP('select3',theTime,gl);
+let convertedGLSLs_inputs_mousein2 = new MouseinCHOP('mousein2',theTime,gl);
+let convertedGLSLs_inputs_select4 = new SelectCHOP('select4',theTime,gl);
+let convertedGLSLs_inputs_merge1 = new MergeCHOP('merge1',theTime,gl);
+let convertedGLSLs_playerXY = new NullCHOP('playerXY',theTime,gl);
+let convertedGLSLs_speed3 = new SpeedCHOP('speed3',theTime,gl);
+let convertedGLSLs_filter2 = new FilterCHOP('filter2',theTime,gl);
+let convertedGLSLs_multiplayerAvaLoader = new ConvertedGLSLs_multiplayerAvaLoader('multiplayerAvaLoader',theTime,gl);
+let convertedGLSLs_over1 = new GlslmultiTOP('over1',theTime,gl);
+let convertedGLSLs_spritesAva = new ConvertedGLSLs_spritesAva('spritesAva',theTime,gl);
+let convertedGLSLs_scale = new SelectCHOP('scale',theTime,gl);
+let convertedGLSLs_constant4 = new GlslmultiTOP('constant4',theTime,gl);
+let convertedGLSLs_null4 = new NullCHOP('null4',theTime,gl);
+let convertedGLSLs_math2 = new MathCHOP('math2',theTime,gl);
+let convertedGLSLs_merge2 = new MergeCHOP('merge2',theTime,gl);
+let convertedGLSLs_null1 = new NullCHOP('null1',theTime,gl);
 
-convertedGLSLs_multiplayerAvaLoader.dependencies.push(
-  convertedGLSLs_multiplayerCHOP
-);
-convertedGLSLs_multiplayerCHOP.dependencies.push(convertedGLSLs_trigger1);
+convertedGLSLs_circles.dependencies.push(convertedGLSLs_multiplayerCHOP);
+convertedGLSLs_circles.dependencies.push(convertedGLSLs_multiplayerAvaLoader);
 convertedGLSLs_multiplayerCHOP.dependencies.push(convertedGLSLs_viewportCHOP);
 convertedGLSLs_multiplayerCHOP.dependencies.push(convertedGLSLs_speedLimit);
 convertedGLSLs_multiplayerCHOP.dependencies.push(convertedGLSLs_playerXY);
-convertedGLSLs_speed3.dependencies.push(convertedGLSLs_mousein1);
+convertedGLSLs_multiplayerAvaLoader.dependencies.push(convertedGLSLs_multiplayerCHOP);
 convertedGLSLs_spritesAva.dependencies.push(convertedGLSLs_multiplayerCHOP);
-convertedGLSLs_spritesAva.dependencies.push(
-  convertedGLSLs_multiplayerAvaLoader
-);
+convertedGLSLs_spritesAva.dependencies.push(convertedGLSLs_multiplayerAvaLoader);
 convertedGLSLs_spritesAva.dependencies.push(convertedGLSLs_playerXY);
 convertedGLSLs_spritesAva.dependencies.push(convertedGLSLs_scale);
-convertedGLSLs_spritesAva.dependencies.push(convertedGLSLs_lfo7);
-convertedGLSLs_lfo7.dependencies.push(convertedGLSLs_math15);
-convertedGLSLs_transform1.dependencies.push(convertedGLSLs_lfo7);
-convertedGLSLs_circles.dependencies.push(convertedGLSLs_multiplayerCHOP);
-convertedGLSLs_circles.dependencies.push(convertedGLSLs_multiplayerAvaLoader);
-convertedGLSLs_viewport3.dependencies.push(convertedGLSLs_null4);
-convertedGLSLs_viewport3.dependencies.push(convertedGLSLs_null1);
-convertedGLSLs_prizes.dependencies.push(convertedGLSLs_multiplayerCHOP);
-convertedGLSLs_prizes.dependencies.push(convertedGLSLs_multiplayerAvaLoader);
-convertedGLSLs_viewport4.dependencies.push(convertedGLSLs_null4);
-convertedGLSLs_viewport4.dependencies.push(convertedGLSLs_null1);
-convertedGLSLs_trigger1.setVals([0.0]);
-convertedGLSLs_trigger1.numChans = 1;
-convertedGLSLs_przeSound.setVals([0.0]);
-convertedGLSLs_przeSound.numChans = 1;
+convertedGLSLs_viewport2.dependencies.push(convertedGLSLs_null4);
+convertedGLSLs_viewport2.dependencies.push(convertedGLSLs_null1);
 convertedGLSLs_speedLimit.numChans = 2;
 convertedGLSLs_math1.numChans = 2;
 convertedGLSLs_inputs_out1.numChans = 2;
@@ -5153,30 +3754,17 @@ convertedGLSLs_inputs_math4.numChans = 2;
 convertedGLSLs_inputs_math3.numChans = 2;
 convertedGLSLs_inputs_hold1.numChans = 2;
 convertedGLSLs_inputs_select3.numChans = 2;
-convertedGLSLs_inputs_mousein2.doChannels = [
-  "posxname",
-  "posyname",
-  "lbuttonname",
-];
+convertedGLSLs_inputs_mousein2.doChannels = ['posxname','posyname','lbuttonname'];
 convertedGLSLs_inputs_mousein2.init();
 convertedGLSLs_inputs_mousein2.numChans = 3;
 convertedGLSLs_inputs_select4.numChans = 1;
 convertedGLSLs_inputs_merge1.numChans = 2;
 convertedGLSLs_playerXY.numChans = 2;
-convertedGLSLs_null5.numChans = 2;
-convertedGLSLs_speed3.setVals([0.019967176020145416, 0.0]);
+convertedGLSLs_speed3.setVals([-51.0369987487793, -134.7220001220703]);
 convertedGLSLs_speed3.numChans = 2;
-convertedGLSLs_filter2.setVals([1.1980305910110474, -0.0]);
+convertedGLSLs_filter2.setVals([-0.0, -0.0]);
 convertedGLSLs_filter2.numChans = 2;
-convertedGLSLs_mousein1.doChannels = ["posxname", "posyname", "rbuttonname"];
-convertedGLSLs_mousein1.init();
-convertedGLSLs_mousein1.numChans = 3;
 convertedGLSLs_scale.numChans = 1;
-convertedGLSLs_null2.numChans = 4;
-convertedGLSLs_lfo7.setVals([0.9918811321258545]);
-convertedGLSLs_lfo7.numChans = 1;
-convertedGLSLs_math15.numChans = 1;
-convertedGLSLs_null14.numChans = 2;
 convertedGLSLs_null4.numChans = 2;
 convertedGLSLs_math2.numChans = 2;
 convertedGLSLs_merge2.numChans = 2;
@@ -5184,62 +3772,36 @@ convertedGLSLs_null1.numChans = 1;
 
 //-------------------------PARAMTERES--------------
 convertedGLSLs_end.par.outputresolution = 0;
-convertedGLSLs_end.par.resolutionw = 1920;
-convertedGLSLs_end.par.resolutionh = 1080; //end
-convertedGLSLs_null10.par.outputresolution = 0;
-convertedGLSLs_null10.par.resolutionw = 1920;
-convertedGLSLs_null10.par.resolutionh = 1080; //null10
-convertedGLSLs_over6.par.outputresolution = 0;
-convertedGLSLs_over6.par.resolutionw = 1920;
-convertedGLSLs_over6.par.resolutionh = 1080; //over6
-convertedGLSLs_over6.fixedResInput = 1;
+convertedGLSLs_end.par.resolutionw = 1000;
+convertedGLSLs_end.par.resolutionh = 1000;//end
+convertedGLSLs_viewport2.par.outputresolution = 0;
+convertedGLSLs_viewport2.par.resolutionw = 1000;
+convertedGLSLs_viewport2.par.resolutionh = 1000;//viewport2
+convertedGLSLs_viewport2.fixedResInput = 1;
+convertedGLSLs_level1.par.outputresolution = 0;
+convertedGLSLs_level1.par.resolutionw = 1000;
+convertedGLSLs_level1.par.resolutionh = 1000;//level1
 convertedGLSLs_circle2.par.outputresolution = 0;
 convertedGLSLs_circle2.par.resolutionw = 256;
-convertedGLSLs_circle2.par.resolutionh = 256; //circle2
-convertedGLSLs_over2.par.outputresolution = 0;
-convertedGLSLs_over2.par.resolutionw = 1000;
-convertedGLSLs_over2.par.resolutionh = 1000; //over2
-convertedGLSLs_over2.fixedResInput = 1;
-convertedGLSLs_viewport3.par.outputresolution = 0;
-convertedGLSLs_viewport3.par.resolutionw = 1000;
-convertedGLSLs_viewport3.par.resolutionh = 1000; //viewport3
-convertedGLSLs_viewport3.fixedResInput = 1;
-convertedGLSLs_transform1.par.outputresolution = 0;
-convertedGLSLs_transform1.par.resolutionw = 256;
-convertedGLSLs_transform1.par.resolutionh = 256; //transform1
+convertedGLSLs_circle2.par.resolutionh = 256;//circle2
+convertedGLSLs_over1.par.outputresolution = 0;
+convertedGLSLs_over1.par.resolutionw = 1920;
+convertedGLSLs_over1.par.resolutionh = 1080;//over1
+convertedGLSLs_over1.fixedResInput = 1;
 convertedGLSLs_constant4.par.outputresolution = 10;
 convertedGLSLs_constant4.par.resolutionw = 1920;
-convertedGLSLs_constant4.par.resolutionh = 1080; //constant4
-convertedGLSLs_viewport4.par.outputresolution = 0;
-convertedGLSLs_viewport4.par.resolutionw = 1000;
-convertedGLSLs_viewport4.par.resolutionh = 1000; //viewport4
-convertedGLSLs_viewport4.fixedResInput = 1;
-convertedGLSLs_circle3.par.outputresolution = 0;
-convertedGLSLs_circle3.par.resolutionw = 256;
-convertedGLSLs_circle3.par.resolutionh = 256; //circle3
-convertedGLSLs_spritesAva.par.Multiplayerop = [convertedGLSLs_multiplayerCHOP];
-convertedGLSLs_spritesAva.par.Avaop = [convertedGLSLs_multiplayerAvaLoader];
-convertedGLSLs_multiplayerAvaLoader.par.Multiplayerop = [
-  convertedGLSLs_multiplayerCHOP,
-];
-convertedGLSLs_multiplayerCHOP.par.Prizesound = [convertedGLSLs_trigger1];
-convertedGLSLs_multiplayerCHOP.par.Viewportchop = [convertedGLSLs_viewportCHOP];
-convertedGLSLs_multiplayerCHOP.par.Speedlimitop = [convertedGLSLs_speedLimit];
-convertedGLSLs_multiplayerCHOP.par.Debug = 1.0;
-convertedGLSLs_trigger1.par.threshup = 0.28;
-convertedGLSLs_trigger1.par.attack = 0.0;
-convertedGLSLs_trigger1.par.ashape = 0.0;
-convertedGLSLs_trigger1.par.peaklen = 0.0;
-convertedGLSLs_trigger1.par.decay = 0.0266667;
-convertedGLSLs_trigger1.par.dshape = 0.0;
-convertedGLSLs_trigger1.par.sustain = 0.0;
-convertedGLSLs_trigger1.par.release = 0.0;
-convertedGLSLs_trigger1.par.rshape = 0.0;
-convertedGLSLs_przeSound.par.const0value = 0.0;
+convertedGLSLs_constant4.par.resolutionh = 1080;//constant4
+convertedGLSLs_circles.par.Multiplayerop = [convertedGLSLs_multiplayerCHOP];
+convertedGLSLs_circles.par.Avaop = [convertedGLSLs_multiplayerAvaLoader];
+convertedGLSLs_circle2.par.file = 'circle2.png';
 convertedGLSLs.par.w = 1920.0;
 convertedGLSLs.par.h = 1080.0;
 convertedGLSLs.par.resizecomp = [convertedGLSLs];
 convertedGLSLs.par.repocomp = [convertedGLSLs];
+convertedGLSLs_multiplayerCHOP.par.Viewportchop = [convertedGLSLs_viewportCHOP];
+convertedGLSLs_multiplayerCHOP.par.Speedlimitop = [convertedGLSLs_speedLimit];
+convertedGLSLs_multiplayerCHOP.par.Debug = 1.0;
+convertedGLSLs_multiplayerCHOP.par.Debug = 1.0;
 convertedGLSLs_viewportCHOP.par.Orthowidth = 337.0;
 convertedGLSLs_viewportCHOP.par.Orthowidth = 337.0;
 convertedGLSLs_speedLimit.par.type = 1.0;
@@ -5248,49 +3810,37 @@ convertedGLSLs_speedLimit.par.max = 100.0;
 convertedGLSLs_math1.par.gain = -1.0;
 convertedGLSLs_inputs_math8.par.chopop = 1.0;
 convertedGLSLs_inputs_math5.par.chanop = 2.0;
-convertedGLSLs_inputs_select1.par.chans = [0, 1];
+convertedGLSLs_inputs_select1.par.chans = [0,1];
 convertedGLSLs_inputs_math1.par.gain = 500.0;
 convertedGLSLs_inputs_keyboardin1.par.keys = 0.0;
 convertedGLSLs_inputs_math6.par.chanop = 2.0;
-convertedGLSLs_inputs_select2.par.chans = [3, 2];
+convertedGLSLs_inputs_select2.par.chans = [3,2];
 convertedGLSLs_inputs_math7.par.gain = 500.0;
 convertedGLSLs_inputs_limit1.par.type = 1.0;
 convertedGLSLs_inputs_math4.par.chopop = 3.0;
 convertedGLSLs_inputs_math3.par.chopop = 2.0;
-convertedGLSLs_inputs_select3.par.chans = [0, 1];
-convertedGLSLs_inputs_mousein2.par.lbuttonname = "l";
+convertedGLSLs_inputs_select3.par.chans = [0,1];
+convertedGLSLs_inputs_mousein2.par.lbuttonname = 'l';
 convertedGLSLs_inputs_select4.par.chans = [2];
 convertedGLSLs_speed3.par.limittype = 2.0;
 convertedGLSLs_speed3.par.min = -500.0;
 convertedGLSLs_speed3.par.max = 500.0;
 convertedGLSLs_filter2.par.width = 0.22;
-convertedGLSLs_mousein1.par.rbuttonname = "k";
-convertedGLSLs_circle2.par.file = "circle2.png";
+convertedGLSLs_multiplayerAvaLoader.par.Multiplayerop = [convertedGLSLs_multiplayerCHOP];
+convertedGLSLs_spritesAva.par.Multiplayerop = [convertedGLSLs_multiplayerCHOP];
+convertedGLSLs_spritesAva.par.Avaop = [convertedGLSLs_multiplayerAvaLoader];
+convertedGLSLs_spritesAva.par.Avascale = 1.0;
+convertedGLSLs_spritesAva.par.Avascale = 1.0;
 convertedGLSLs_scale.par.chans = [3];
-convertedGLSLs_lfo7.par.offset = 0.9;
-convertedGLSLs_lfo7.par.amp = 0.092;
-convertedGLSLs_math15.par.preop = 2.0;
-convertedGLSLs_math15.par.chanop = 1.0;
-convertedGLSLs_math15.par.fromrange2 = 100.0;
-convertedGLSLs_math15.par.torange1 = 0.26;
-convertedGLSLs_circles.par.Multiplayerop = [convertedGLSLs_multiplayerCHOP];
-convertedGLSLs_circles.par.Avaop = [convertedGLSLs_multiplayerAvaLoader];
 convertedGLSLs_math2.par.chopop = 3.0;
 convertedGLSLs_math2.par.gain = -1.0;
-convertedGLSLs_prizes.par.Globalscale = 0.609;
-convertedGLSLs_prizes.par.Multiplayerop = [convertedGLSLs_multiplayerCHOP];
-convertedGLSLs_prizes.par.Avaop = [convertedGLSLs_multiplayerAvaLoader];
-convertedGLSLs_prizes.par.Globalscale = 0.609;
-convertedGLSLs_circle3.par.file = "circle3.png";
 
 //-------------------------CONNECTIONS--------------
-convertedGLSLs_end.connect(convertedGLSLs_null10);
-convertedGLSLs_null10.connect(convertedGLSLs_over6);
-convertedGLSLs_over6.connect(convertedGLSLs_spritesAva);
-convertedGLSLs_over6.connect(convertedGLSLs_over2);
-convertedGLSLs_spritesAva.connect(convertedGLSLs_multiplayerAvaLoader);
-convertedGLSLs_spritesAva.connect(convertedGLSLs_circle2);
-convertedGLSLs_trigger1.connect(convertedGLSLs_przeSound);
+convertedGLSLs_end.connect(convertedGLSLs_viewport2);
+convertedGLSLs_viewport2.connect(convertedGLSLs_level1);
+convertedGLSLs_viewport2.connect(convertedGLSLs_over1);
+convertedGLSLs_level1.connect(convertedGLSLs_circles);
+convertedGLSLs_circles.connect(convertedGLSLs_circle2);
 convertedGLSLs_speedLimit.connect(convertedGLSLs_math1);
 convertedGLSLs_math1.connect(convertedGLSLs_orthoMove);
 convertedGLSLs_orthoMove.connect(convertedGLSLs_inputs_out1);
@@ -5317,204 +3867,106 @@ convertedGLSLs_inputs_select3.connect(convertedGLSLs_inputs_mousein2);
 convertedGLSLs_inputs_select4.connect(convertedGLSLs_inputs_mousein2);
 convertedGLSLs_inputs_merge1.connect(convertedGLSLs_inputs_select4);
 convertedGLSLs_inputs_merge1.connect(convertedGLSLs_inputs_select4);
-convertedGLSLs_playerXY.connect(convertedGLSLs_null5);
-convertedGLSLs_null5.connect(convertedGLSLs_speed3);
+convertedGLSLs_playerXY.connect(convertedGLSLs_speed3);
 convertedGLSLs_speed3.connect(convertedGLSLs_filter2);
 convertedGLSLs_filter2.connect(convertedGLSLs_speedLimit);
-convertedGLSLs_scale.connect(convertedGLSLs_null2);
-convertedGLSLs_null2.connect(convertedGLSLs_viewportCHOP);
-convertedGLSLs_math15.connect(convertedGLSLs_null14);
-convertedGLSLs_null14.connect(convertedGLSLs_speedLimit);
-convertedGLSLs_over2.connect(convertedGLSLs_viewport3);
-convertedGLSLs_over2.connect(convertedGLSLs_viewport4);
-convertedGLSLs_viewport3.connect(convertedGLSLs_circles);
-convertedGLSLs_viewport3.connect(convertedGLSLs_constant4);
-convertedGLSLs_circles.connect(convertedGLSLs_transform1);
-convertedGLSLs_transform1.connect(convertedGLSLs_circle2);
+convertedGLSLs_over1.connect(convertedGLSLs_spritesAva);
+convertedGLSLs_over1.connect(convertedGLSLs_constant4);
+convertedGLSLs_spritesAva.connect(convertedGLSLs_multiplayerAvaLoader);
+convertedGLSLs_spritesAva.connect(convertedGLSLs_circle2);
+convertedGLSLs_scale.connect(convertedGLSLs_viewportCHOP);
 convertedGLSLs_null4.connect(convertedGLSLs_math2);
-convertedGLSLs_math2.connect(convertedGLSLs_null5);
+convertedGLSLs_math2.connect(convertedGLSLs_speed3);
 convertedGLSLs_math2.connect(convertedGLSLs_merge2);
 convertedGLSLs_merge2.connect(convertedGLSLs_null1);
 convertedGLSLs_merge2.connect(convertedGLSLs_null1);
 convertedGLSLs_null1.connect(convertedGLSLs_scale);
-convertedGLSLs_viewport4.connect(convertedGLSLs_prizes);
-convertedGLSLs_viewport4.connect(convertedGLSLs_constant4);
-convertedGLSLs_prizes.connect(convertedGLSLs_circle3);
 convertedGLSLs_end.toScreen = true;
 
 //-------------------------GLSL STUFF--------------
-convertedGLSLs_null10.fragmentShader =
-  "# version 300 es \nprecision highp float;\nin vec3 vUV;\nuniform sampler2D sTD2DInputs[1];\n@TDUniforms@\nuniform vec2 resolution;\nuniform float time;\nout vec4 fragColor;\nvoid main()\n{\nvec4 c = texture(sTD2DInputs[0], vUV.st);\nfragColor = (c);\n}\n";
-convertedGLSLs_null10.appendUniform("time", "1f", [0.0]);
-convertedGLSLs_over6.fragmentShader =
-  "# version 300 es \nprecision highp float;\nin vec3 vUV;\nuniform sampler2D sTD2DInputs[2];\n@TDUniforms@\nuniform vec2 resolution;\nuniform float psize;\nuniform float pprefit;\nuniform float pjustifyh;\nuniform float pjustifyv;\nuniform float pextend;\nuniform float pr;\nuniform float ptx;\nuniform float pty;\nuniform float ptunit;\nuniform float psx;\nuniform float psy;\nuniform float ppx;\nuniform float ppy;\nuniform float ppunit;\nout vec4 fragColor;\nvec4 operation(vec4 a, vec4 b){\nfloat mask = a.a;\nif(mask>0.) a = a/mask;\nvec4 c = mix(b,a,mask);\nreturn c;\n}\nfloat justifyX(vec2 uv0, vec2 thisRes, vec2 fixedRes){\nvec2 uv = uv0;\nif(pjustifyh == 1.) return uv.x-(fixedRes.x-thisRes.x)/fixedRes.x*0.5;\nif(pjustifyh == 2.) return uv.x-(fixedRes.x-thisRes.x)/fixedRes.x;\nreturn uv.x;\n}\nfloat justifyY(vec2 uv0, vec2 thisRes, vec2 fixedRes){\nvec2 uv = uv0;\nif(pjustifyv == 1.) return uv.y-(fixedRes.y-thisRes.y)/fixedRes.y*0.5;\nif(pjustifyv == 2.) return uv.y-(fixedRes.y-thisRes.y)/fixedRes.y;\nreturn uv.y;\n}\nvec2 extend(vec2 uv0,vec2 thisRes){\nvec2 uv = uv0;\nif (pextend == 0.) uv = clamp(uv, 0.5/thisRes,1.0-0.5/thisRes);\nif (pextend == 2.) uv = mod(uv, vec2(1.));\nif (pextend == 3.) {\nuv = mod(uv, vec2(2.));\nif (uv.x > 1.) uv.x = 2. - uv.x;\nif (uv.y > 1.) uv.y = 2. - uv.y;\nuv = uv;\n}\nreturn uv;\n}\nvec2 fitHorizontal(vec2 uv0, vec2 thisRes, vec2 fixedRes){\nvec2 uv = uv0;\nfloat dY = (fixedRes.y/thisRes.y)*(thisRes.x/fixedRes.x);\nuv.y = uv.y*dY-0.5*dY+0.5;\nreturn uv;\n}\nvec2 fitVertical(vec2 uv0, vec2 thisRes, vec2 fixedRes){\nvec2 uv = uv0;\nfloat dX = (fixedRes.x/thisRes.x)*(thisRes.y/fixedRes.y);\nuv.x = uv.x*dX-0.5*dX+0.5;\nreturn uv;\n}\nmat2 getRotMatrix(float _angle){\nreturn mat2(cos(_angle),-sin(_angle),\nsin(_angle),cos(_angle));\n}\nvec2 rotate2(vec2 uv,vec2 fixedRes){\nfloat rad = radians(pr);\nvec2 aspect = fixedRes / fixedRes.y ;\nvec2 newUV = uv;\nnewUV = newUV * aspect;\nnewUV = getRotMatrix(-rad) * newUV;\nnewUV = newUV / aspect;\nreturn newUV;\n}\nvec2 fitResolution(vec2 uv0, vec2 thisRes, vec2 fixedRes){\nvec2 uv = uv0;\nvec2 modRes = thisRes;\nif(pprefit == 0.){\nmodRes = fixedRes;\n}\nif(pprefit == 5.) {\nuv.x = justifyX(uv0, thisRes,fixedRes);\nuv.y = justifyY(uv0, thisRes,fixedRes);\nvec2 dRes = fixedRes/thisRes;\nuv = uv*dRes;\n}\nif(pprefit == 1.) uv = fitHorizontal(uv, thisRes, fixedRes);\nif(pprefit == 2.) uv = fitVertical(uv, thisRes, fixedRes);\nif(pprefit == 3.){\nif(thisRes.x/fixedRes.x<thisRes.y/fixedRes.y) uv = fitVertical(uv, thisRes, fixedRes);\nelse uv = fitHorizontal(uv, thisRes, fixedRes);\n}\nif(pprefit == 4.){\nif(thisRes.x/fixedRes.x>thisRes.y/fixedRes.y) uv = fitVertical(uv, thisRes, fixedRes);\nelse uv = fitHorizontal(uv, thisRes, fixedRes);\n}\nvec2 pivot = vec2(ppx,ppy);\nif (ppunit == 0.) pivot = vec2(ppx,ppy)/resolution;\nif (ppunit == 2.) pivot = vec2(ppx,ppy*resolution.x/resolution.y);\nuv = uv-pivot;\nuv = rotate2(uv,modRes);\nuv.x = uv.x/psx;\nuv.y = uv.y/psy;\nuv = uv+pivot;\nuv = extend(uv, thisRes);\nreturn uv;\n}\nvec2 transform(vec2 uv0){\nif(ptunit == 0.)return uv0-vec2(ptx,pty)/resolution;\nif(ptunit == 1.)return uv0-vec2(ptx,pty);\nif(ptunit == 2.)return uv0-vec2(ptx,pty*resolution.x/resolution.y);\nreturn uv0-vec2(ptx,pty);\n}\nvoid main()\n{\nvec2 uv = vUV.st;\nvec2 uv0 = uv;\nvec2 uv1 = uv;\nvec2 res0 = uTD2DInfos[0].res.zw;\nvec2 res1 = uTD2DInfos[1].res.zw;\nif (psize == 1.)uv0 = fitResolution(transform(uv), res0, res1);\nelse uv1 = fitResolution(transform(uv), res1, res0);\nvec4 a = texture(sTD2DInputs[0], uv0);\nvec4 b = texture(sTD2DInputs[1], uv1);\nif(pextend ==1.){\nif (uv0.x<0.||uv0.x>1.||uv0.y<0.||uv0.y>1.) a = vec4(0.);\nif (uv1.x<0.||uv1.x>1.||uv1.y<0.||uv1.y>1.) b = vec4(0.);\n}\nvec4 c = operation(a,b);\nfragColor = (c);\n}\n";
-convertedGLSLs_over6.appendUniform("psize", "1f", [1.0]);
-convertedGLSLs_over6.appendUniform("pprefit", "1f", [0.0]);
-convertedGLSLs_over6.appendUniform("pjustifyh", "1f", [1.0]);
-convertedGLSLs_over6.appendUniform("pjustifyv", "1f", [1.0]);
-convertedGLSLs_over6.appendUniform("pextend", "1f", [1.0]);
-convertedGLSLs_over6.appendUniform("pr", "1f", [0.0]);
-convertedGLSLs_over6.appendUniform("ptx", "1f", [0.0]);
-convertedGLSLs_over6.appendUniform("pty", "1f", [0.0]);
-convertedGLSLs_over6.appendUniform("ptunit", "1f", [1.0]);
-convertedGLSLs_over6.appendUniform("psx", "1f", [1.0]);
-convertedGLSLs_over6.appendUniform("psy", "1f", [1.0]);
-convertedGLSLs_over6.appendUniform("ppx", "1f", [0.5]);
-convertedGLSLs_over6.appendUniform("ppy", "1f", [0.5]);
-convertedGLSLs_over6.appendUniform("ppunit", "1f", [1.0]);
-convertedGLSLs_over2.fragmentShader =
-  "# version 300 es \nprecision highp float;\nin vec3 vUV;\nuniform sampler2D sTD2DInputs[2];\n@TDUniforms@\nuniform vec2 resolution;\nuniform float psize;\nuniform float pprefit;\nuniform float pjustifyh;\nuniform float pjustifyv;\nuniform float pextend;\nuniform float pr;\nuniform float ptx;\nuniform float pty;\nuniform float ptunit;\nuniform float psx;\nuniform float psy;\nuniform float ppx;\nuniform float ppy;\nuniform float ppunit;\nout vec4 fragColor;\nvec4 operation(vec4 a, vec4 b){\nfloat mask = a.a;\nif(mask>0.) a = a/mask;\nvec4 c = mix(b,a,mask);\nreturn c;\n}\nfloat justifyX(vec2 uv0, vec2 thisRes, vec2 fixedRes){\nvec2 uv = uv0;\nif(pjustifyh == 1.) return uv.x-(fixedRes.x-thisRes.x)/fixedRes.x*0.5;\nif(pjustifyh == 2.) return uv.x-(fixedRes.x-thisRes.x)/fixedRes.x;\nreturn uv.x;\n}\nfloat justifyY(vec2 uv0, vec2 thisRes, vec2 fixedRes){\nvec2 uv = uv0;\nif(pjustifyv == 1.) return uv.y-(fixedRes.y-thisRes.y)/fixedRes.y*0.5;\nif(pjustifyv == 2.) return uv.y-(fixedRes.y-thisRes.y)/fixedRes.y;\nreturn uv.y;\n}\nvec2 extend(vec2 uv0,vec2 thisRes){\nvec2 uv = uv0;\nif (pextend == 0.) uv = clamp(uv, 0.5/thisRes,1.0-0.5/thisRes);\nif (pextend == 2.) uv = mod(uv, vec2(1.));\nif (pextend == 3.) {\nuv = mod(uv, vec2(2.));\nif (uv.x > 1.) uv.x = 2. - uv.x;\nif (uv.y > 1.) uv.y = 2. - uv.y;\nuv = uv;\n}\nreturn uv;\n}\nvec2 fitHorizontal(vec2 uv0, vec2 thisRes, vec2 fixedRes){\nvec2 uv = uv0;\nfloat dY = (fixedRes.y/thisRes.y)*(thisRes.x/fixedRes.x);\nuv.y = uv.y*dY-0.5*dY+0.5;\nreturn uv;\n}\nvec2 fitVertical(vec2 uv0, vec2 thisRes, vec2 fixedRes){\nvec2 uv = uv0;\nfloat dX = (fixedRes.x/thisRes.x)*(thisRes.y/fixedRes.y);\nuv.x = uv.x*dX-0.5*dX+0.5;\nreturn uv;\n}\nmat2 getRotMatrix(float _angle){\nreturn mat2(cos(_angle),-sin(_angle),\nsin(_angle),cos(_angle));\n}\nvec2 rotate2(vec2 uv,vec2 fixedRes){\nfloat rad = radians(pr);\nvec2 aspect = fixedRes / fixedRes.y ;\nvec2 newUV = uv;\nnewUV = newUV * aspect;\nnewUV = getRotMatrix(-rad) * newUV;\nnewUV = newUV / aspect;\nreturn newUV;\n}\nvec2 fitResolution(vec2 uv0, vec2 thisRes, vec2 fixedRes){\nvec2 uv = uv0;\nvec2 modRes = thisRes;\nif(pprefit == 0.){\nmodRes = fixedRes;\n}\nif(pprefit == 5.) {\nuv.x = justifyX(uv0, thisRes,fixedRes);\nuv.y = justifyY(uv0, thisRes,fixedRes);\nvec2 dRes = fixedRes/thisRes;\nuv = uv*dRes;\n}\nif(pprefit == 1.) uv = fitHorizontal(uv, thisRes, fixedRes);\nif(pprefit == 2.) uv = fitVertical(uv, thisRes, fixedRes);\nif(pprefit == 3.){\nif(thisRes.x/fixedRes.x<thisRes.y/fixedRes.y) uv = fitVertical(uv, thisRes, fixedRes);\nelse uv = fitHorizontal(uv, thisRes, fixedRes);\n}\nif(pprefit == 4.){\nif(thisRes.x/fixedRes.x>thisRes.y/fixedRes.y) uv = fitVertical(uv, thisRes, fixedRes);\nelse uv = fitHorizontal(uv, thisRes, fixedRes);\n}\nvec2 pivot = vec2(ppx,ppy);\nif (ppunit == 0.) pivot = vec2(ppx,ppy)/resolution;\nif (ppunit == 2.) pivot = vec2(ppx,ppy*resolution.x/resolution.y);\nuv = uv-pivot;\nuv = rotate2(uv,modRes);\nuv.x = uv.x/psx;\nuv.y = uv.y/psy;\nuv = uv+pivot;\nuv = extend(uv, thisRes);\nreturn uv;\n}\nvec2 transform(vec2 uv0){\nif(ptunit == 0.)return uv0-vec2(ptx,pty)/resolution;\nif(ptunit == 1.)return uv0-vec2(ptx,pty);\nif(ptunit == 2.)return uv0-vec2(ptx,pty*resolution.x/resolution.y);\nreturn uv0-vec2(ptx,pty);\n}\nvoid main()\n{\nvec2 uv = vUV.st;\nvec2 uv0 = uv;\nvec2 uv1 = uv;\nvec2 res0 = uTD2DInfos[0].res.zw;\nvec2 res1 = uTD2DInfos[1].res.zw;\nif (psize == 1.)uv0 = fitResolution(transform(uv), res0, res1);\nelse uv1 = fitResolution(transform(uv), res1, res0);\nvec4 a = texture(sTD2DInputs[0], uv0);\nvec4 b = texture(sTD2DInputs[1], uv1);\nif(pextend ==1.){\nif (uv0.x<0.||uv0.x>1.||uv0.y<0.||uv0.y>1.) a = vec4(0.);\nif (uv1.x<0.||uv1.x>1.||uv1.y<0.||uv1.y>1.) b = vec4(0.);\n}\nvec4 c = operation(a,b);\nfragColor = (c);\n}\n";
-convertedGLSLs_over2.appendUniform("psize", "1f", [1.0]);
-convertedGLSLs_over2.appendUniform("pprefit", "1f", [0.0]);
-convertedGLSLs_over2.appendUniform("pjustifyh", "1f", [1.0]);
-convertedGLSLs_over2.appendUniform("pjustifyv", "1f", [1.0]);
-convertedGLSLs_over2.appendUniform("pextend", "1f", [1.0]);
-convertedGLSLs_over2.appendUniform("pr", "1f", [0.0]);
-convertedGLSLs_over2.appendUniform("ptx", "1f", [0.0]);
-convertedGLSLs_over2.appendUniform("pty", "1f", [0.0]);
-convertedGLSLs_over2.appendUniform("ptunit", "1f", [1.0]);
-convertedGLSLs_over2.appendUniform("psx", "1f", [1.0]);
-convertedGLSLs_over2.appendUniform("psy", "1f", [1.0]);
-convertedGLSLs_over2.appendUniform("ppx", "1f", [0.5]);
-convertedGLSLs_over2.appendUniform("ppy", "1f", [0.5]);
-convertedGLSLs_over2.appendUniform("ppunit", "1f", [1.0]);
-convertedGLSLs_viewport3.fragmentShader =
-  "# version 300 es \nprecision highp float;\nin vec3 vUV;\nuniform sampler2D sTD2DInputs[2];\n@TDUniforms@\nuniform vec2 resolution;\nuniform float psize;\nuniform float pprefit;\nuniform float pjustifyh;\nuniform float pjustifyv;\nuniform float pextend;\nuniform float pr;\nuniform float ptx;\nuniform float pty;\nuniform float ptunit;\nuniform float psx;\nuniform float psy;\nuniform float ppx;\nuniform float ppy;\nuniform float ppunit;\nout vec4 fragColor;\nvec4 operation(vec4 a, vec4 b){\nfloat mask = a.a;\nif(mask>0.) a = a/mask;\nvec4 c = mix(b,a,mask);\nreturn c;\n}\nfloat justifyX(vec2 uv0, vec2 thisRes, vec2 fixedRes){\nvec2 uv = uv0;\nif(pjustifyh == 1.) return uv.x-(fixedRes.x-thisRes.x)/fixedRes.x*0.5;\nif(pjustifyh == 2.) return uv.x-(fixedRes.x-thisRes.x)/fixedRes.x;\nreturn uv.x;\n}\nfloat justifyY(vec2 uv0, vec2 thisRes, vec2 fixedRes){\nvec2 uv = uv0;\nif(pjustifyv == 1.) return uv.y-(fixedRes.y-thisRes.y)/fixedRes.y*0.5;\nif(pjustifyv == 2.) return uv.y-(fixedRes.y-thisRes.y)/fixedRes.y;\nreturn uv.y;\n}\nvec2 extend(vec2 uv0,vec2 thisRes){\nvec2 uv = uv0;\nif (pextend == 0.) uv = clamp(uv, 0.5/thisRes,1.0-0.5/thisRes);\nif (pextend == 2.) uv = mod(uv, vec2(1.));\nif (pextend == 3.) {\nuv = mod(uv, vec2(2.));\nif (uv.x > 1.) uv.x = 2. - uv.x;\nif (uv.y > 1.) uv.y = 2. - uv.y;\nuv = uv;\n}\nreturn uv;\n}\nvec2 fitHorizontal(vec2 uv0, vec2 thisRes, vec2 fixedRes){\nvec2 uv = uv0;\nfloat dY = (fixedRes.y/thisRes.y)*(thisRes.x/fixedRes.x);\nuv.y = uv.y*dY-0.5*dY+0.5;\nreturn uv;\n}\nvec2 fitVertical(vec2 uv0, vec2 thisRes, vec2 fixedRes){\nvec2 uv = uv0;\nfloat dX = (fixedRes.x/thisRes.x)*(thisRes.y/fixedRes.y);\nuv.x = uv.x*dX-0.5*dX+0.5;\nreturn uv;\n}\nmat2 getRotMatrix(float _angle){\nreturn mat2(cos(_angle),-sin(_angle),\nsin(_angle),cos(_angle));\n}\nvec2 rotate2(vec2 uv,vec2 fixedRes){\nfloat rad = radians(pr);\nvec2 aspect = fixedRes / fixedRes.y ;\nvec2 newUV = uv;\nnewUV = newUV * aspect;\nnewUV = getRotMatrix(-rad) * newUV;\nnewUV = newUV / aspect;\nreturn newUV;\n}\nvec2 fitResolution(vec2 uv0, vec2 thisRes, vec2 fixedRes){\nvec2 uv = uv0;\nvec2 modRes = thisRes;\nif(pprefit == 0.){\nmodRes = fixedRes;\n}\nif(pprefit == 5.) {\nuv.x = justifyX(uv0, thisRes,fixedRes);\nuv.y = justifyY(uv0, thisRes,fixedRes);\nvec2 dRes = fixedRes/thisRes;\nuv = uv*dRes;\n}\nif(pprefit == 1.) uv = fitHorizontal(uv, thisRes, fixedRes);\nif(pprefit == 2.) uv = fitVertical(uv, thisRes, fixedRes);\nif(pprefit == 3.){\nif(thisRes.x/fixedRes.x<thisRes.y/fixedRes.y) uv = fitVertical(uv, thisRes, fixedRes);\nelse uv = fitHorizontal(uv, thisRes, fixedRes);\n}\nif(pprefit == 4.){\nif(thisRes.x/fixedRes.x>thisRes.y/fixedRes.y) uv = fitVertical(uv, thisRes, fixedRes);\nelse uv = fitHorizontal(uv, thisRes, fixedRes);\n}\nvec2 pivot = vec2(ppx,ppy);\nif (ppunit == 0.) pivot = vec2(ppx,ppy)/resolution;\nif (ppunit == 2.) pivot = vec2(ppx,ppy*resolution.x/resolution.y);\nuv = uv-pivot;\nuv = rotate2(uv,modRes);\nuv.x = uv.x/psx;\nuv.y = uv.y/psy;\nuv = uv+pivot;\nuv = extend(uv, thisRes);\nreturn uv;\n}\nvec2 transform(vec2 uv0){\nif(ptunit == 0.)return uv0-vec2(ptx,pty)/resolution;\nif(ptunit == 1.)return uv0-vec2(ptx,pty);\nif(ptunit == 2.)return uv0-vec2(ptx,pty*resolution.x/resolution.y);\nreturn uv0-vec2(ptx,pty);\n}\nvoid main()\n{\nvec2 uv = vUV.st;\nvec2 uv0 = uv;\nvec2 uv1 = uv;\nvec2 res0 = uTD2DInfos[0].res.zw;\nvec2 res1 = uTD2DInfos[1].res.zw;\nif (psize == 1.)uv0 = fitResolution(transform(uv), res0, res1);\nelse uv1 = fitResolution(transform(uv), res1, res0);\nvec4 a = texture(sTD2DInputs[0], uv0);\nvec4 b = texture(sTD2DInputs[1], uv1);\nif(pextend ==1.){\nif (uv0.x<0.||uv0.x>1.||uv0.y<0.||uv0.y>1.) a = vec4(0.);\nif (uv1.x<0.||uv1.x>1.||uv1.y<0.||uv1.y>1.) b = vec4(0.);\n}\nvec4 c = operation(a,b);\nfragColor = (c);\n}\n";
-convertedGLSLs_viewport3.appendUniform("psize", "1f", [1.0]);
-convertedGLSLs_viewport3.appendUniform("pprefit", "1f", [5.0]);
-convertedGLSLs_viewport3.appendUniform("pjustifyh", "1f", [1.0]);
-convertedGLSLs_viewport3.appendUniform("pjustifyv", "1f", [1.0]);
-convertedGLSLs_viewport3.appendUniform("pextend", "1f", [2.0]);
-convertedGLSLs_viewport3.appendUniform("pr", "1f", [0.0]);
-convertedGLSLs_viewport3.appendUniform("ptx", "1f", [
-  convertedGLSLs_null4.chans[0] * 1,
-]);
-convertedGLSLs_viewport3.appendUniform("pty", "1f", [
-  convertedGLSLs_null4.chans[1] * 1,
-]);
-convertedGLSLs_viewport3.appendUniform("ptunit", "1f", [0.0]);
-convertedGLSLs_viewport3.appendUniform("psx", "1f", [
-  convertedGLSLs_null1.chans[0] * 1,
-]);
-convertedGLSLs_viewport3.appendUniform("psy", "1f", [
-  convertedGLSLs_null1.chans[0] * 1,
-]);
-convertedGLSLs_viewport3.appendUniform("ppx", "1f", [0.5]);
-convertedGLSLs_viewport3.appendUniform("ppy", "1f", [0.5]);
-convertedGLSLs_viewport3.appendUniform("ppunit", "1f", [1.0]);
-convertedGLSLs_transform1.fragmentShader =
-  "# version 300 es \nprecision highp float;\nin vec3 vUV;\nuniform sampler2D sTD2DInputs[1];\n@TDUniforms@\nuniform vec2 resolution;\nuniform float time;\nuniform float ptx;\nuniform float pty;\nuniform float psx;\nuniform float psy;\nuniform float ppx;\nuniform float ppy;\nout vec4 fragColor;\nvoid main()\n{\nvec2 uv = vUV.st-vec2(ptx,pty);\nuv = uv-vec2(ppx,ppy);\nuv.x = uv.x/psx;\nuv.y = uv.y/psy;\nuv = uv+vec2(ppx,ppy);\nvec4 a = texture(sTD2DInputs[0], uv);\nif (uv.x<0. || uv.x>1. || uv.y<0. || uv.y>1.) a = vec4(0);\nfragColor = (a);\n}\n";
-convertedGLSLs_transform1.appendUniform("time", "1f", [0.0]);
-convertedGLSLs_transform1.appendUniform("ptx", "1f", [0.0]);
-convertedGLSLs_transform1.appendUniform("pty", "1f", [0.0]);
-convertedGLSLs_transform1.appendUniform("psx", "1f", [
-  convertedGLSLs_lfo7.chans[0] * 1,
-]);
-convertedGLSLs_transform1.appendUniform("psy", "1f", [
-  convertedGLSLs_lfo7.chans[0] * 1,
-]);
-convertedGLSLs_transform1.appendUniform("ppx", "1f", [0.5]);
-convertedGLSLs_transform1.appendUniform("ppy", "1f", [0.5]);
-convertedGLSLs_constant4.fragmentShader =
-  "# version 300 es \nprecision highp float;\nin vec3 vUV;\n@TDUniforms@\nuniform vec2 resolution;\nuniform float pcolorr;\nuniform float pcolorg;\nuniform float pcolorb;\nuniform float palpha;\nuniform float pcombineinput;\nout vec4 fragColor;\nvec4 combineInput(vec4 c){\nvec4 c1 = vec4(1.);\nif (pcombineinput == 1.){\nc = c1*c;\nreturn c;\n}\nreturn c;\n}\nvoid main()\n{\nvec4 c = vec4(pcolorr,pcolorg,pcolorb,palpha);\nc.rgb = c.rgb*c.a;\nc = combineInput(c);\nfragColor = (c);\n}\n";
-convertedGLSLs_constant4.appendUniform("pcolorr", "1f", [0.0]);
-convertedGLSLs_constant4.appendUniform("pcolorg", "1f", [0.0]);
-convertedGLSLs_constant4.appendUniform("pcolorb", "1f", [0.0]);
-convertedGLSLs_constant4.appendUniform("palpha", "1f", [0.0]);
-convertedGLSLs_constant4.appendUniform("pcombineinput", "1f", [1.0]);
-convertedGLSLs_viewport4.fragmentShader =
-  "# version 300 es \nprecision highp float;\nin vec3 vUV;\nuniform sampler2D sTD2DInputs[2];\n@TDUniforms@\nuniform vec2 resolution;\nuniform float psize;\nuniform float pprefit;\nuniform float pjustifyh;\nuniform float pjustifyv;\nuniform float pextend;\nuniform float pr;\nuniform float ptx;\nuniform float pty;\nuniform float ptunit;\nuniform float psx;\nuniform float psy;\nuniform float ppx;\nuniform float ppy;\nuniform float ppunit;\nout vec4 fragColor;\nvec4 operation(vec4 a, vec4 b){\nfloat mask = a.a;\nif(mask>0.) a = a/mask;\nvec4 c = mix(b,a,mask);\nreturn c;\n}\nfloat justifyX(vec2 uv0, vec2 thisRes, vec2 fixedRes){\nvec2 uv = uv0;\nif(pjustifyh == 1.) return uv.x-(fixedRes.x-thisRes.x)/fixedRes.x*0.5;\nif(pjustifyh == 2.) return uv.x-(fixedRes.x-thisRes.x)/fixedRes.x;\nreturn uv.x;\n}\nfloat justifyY(vec2 uv0, vec2 thisRes, vec2 fixedRes){\nvec2 uv = uv0;\nif(pjustifyv == 1.) return uv.y-(fixedRes.y-thisRes.y)/fixedRes.y*0.5;\nif(pjustifyv == 2.) return uv.y-(fixedRes.y-thisRes.y)/fixedRes.y;\nreturn uv.y;\n}\nvec2 extend(vec2 uv0,vec2 thisRes){\nvec2 uv = uv0;\nif (pextend == 0.) uv = clamp(uv, 0.5/thisRes,1.0-0.5/thisRes);\nif (pextend == 2.) uv = mod(uv, vec2(1.));\nif (pextend == 3.) {\nuv = mod(uv, vec2(2.));\nif (uv.x > 1.) uv.x = 2. - uv.x;\nif (uv.y > 1.) uv.y = 2. - uv.y;\nuv = uv;\n}\nreturn uv;\n}\nvec2 fitHorizontal(vec2 uv0, vec2 thisRes, vec2 fixedRes){\nvec2 uv = uv0;\nfloat dY = (fixedRes.y/thisRes.y)*(thisRes.x/fixedRes.x);\nuv.y = uv.y*dY-0.5*dY+0.5;\nreturn uv;\n}\nvec2 fitVertical(vec2 uv0, vec2 thisRes, vec2 fixedRes){\nvec2 uv = uv0;\nfloat dX = (fixedRes.x/thisRes.x)*(thisRes.y/fixedRes.y);\nuv.x = uv.x*dX-0.5*dX+0.5;\nreturn uv;\n}\nmat2 getRotMatrix(float _angle){\nreturn mat2(cos(_angle),-sin(_angle),\nsin(_angle),cos(_angle));\n}\nvec2 rotate2(vec2 uv,vec2 fixedRes){\nfloat rad = radians(pr);\nvec2 aspect = fixedRes / fixedRes.y ;\nvec2 newUV = uv;\nnewUV = newUV * aspect;\nnewUV = getRotMatrix(-rad) * newUV;\nnewUV = newUV / aspect;\nreturn newUV;\n}\nvec2 fitResolution(vec2 uv0, vec2 thisRes, vec2 fixedRes){\nvec2 uv = uv0;\nvec2 modRes = thisRes;\nif(pprefit == 0.){\nmodRes = fixedRes;\n}\nif(pprefit == 5.) {\nuv.x = justifyX(uv0, thisRes,fixedRes);\nuv.y = justifyY(uv0, thisRes,fixedRes);\nvec2 dRes = fixedRes/thisRes;\nuv = uv*dRes;\n}\nif(pprefit == 1.) uv = fitHorizontal(uv, thisRes, fixedRes);\nif(pprefit == 2.) uv = fitVertical(uv, thisRes, fixedRes);\nif(pprefit == 3.){\nif(thisRes.x/fixedRes.x<thisRes.y/fixedRes.y) uv = fitVertical(uv, thisRes, fixedRes);\nelse uv = fitHorizontal(uv, thisRes, fixedRes);\n}\nif(pprefit == 4.){\nif(thisRes.x/fixedRes.x>thisRes.y/fixedRes.y) uv = fitVertical(uv, thisRes, fixedRes);\nelse uv = fitHorizontal(uv, thisRes, fixedRes);\n}\nvec2 pivot = vec2(ppx,ppy);\nif (ppunit == 0.) pivot = vec2(ppx,ppy)/resolution;\nif (ppunit == 2.) pivot = vec2(ppx,ppy*resolution.x/resolution.y);\nuv = uv-pivot;\nuv = rotate2(uv,modRes);\nuv.x = uv.x/psx;\nuv.y = uv.y/psy;\nuv = uv+pivot;\nuv = extend(uv, thisRes);\nreturn uv;\n}\nvec2 transform(vec2 uv0){\nif(ptunit == 0.)return uv0-vec2(ptx,pty)/resolution;\nif(ptunit == 1.)return uv0-vec2(ptx,pty);\nif(ptunit == 2.)return uv0-vec2(ptx,pty*resolution.x/resolution.y);\nreturn uv0-vec2(ptx,pty);\n}\nvoid main()\n{\nvec2 uv = vUV.st;\nvec2 uv0 = uv;\nvec2 uv1 = uv;\nvec2 res0 = uTD2DInfos[0].res.zw;\nvec2 res1 = uTD2DInfos[1].res.zw;\nif (psize == 1.)uv0 = fitResolution(transform(uv), res0, res1);\nelse uv1 = fitResolution(transform(uv), res1, res0);\nvec4 a = texture(sTD2DInputs[0], uv0);\nvec4 b = texture(sTD2DInputs[1], uv1);\nif(pextend ==1.){\nif (uv0.x<0.||uv0.x>1.||uv0.y<0.||uv0.y>1.) a = vec4(0.);\nif (uv1.x<0.||uv1.x>1.||uv1.y<0.||uv1.y>1.) b = vec4(0.);\n}\nvec4 c = operation(a,b);\nfragColor = (c);\n}\n";
-convertedGLSLs_viewport4.appendUniform("psize", "1f", [1.0]);
-convertedGLSLs_viewport4.appendUniform("pprefit", "1f", [5.0]);
-convertedGLSLs_viewport4.appendUniform("pjustifyh", "1f", [1.0]);
-convertedGLSLs_viewport4.appendUniform("pjustifyv", "1f", [1.0]);
-convertedGLSLs_viewport4.appendUniform("pextend", "1f", [2.0]);
-convertedGLSLs_viewport4.appendUniform("pr", "1f", [0.0]);
-convertedGLSLs_viewport4.appendUniform("ptx", "1f", [
-  convertedGLSLs_null4.chans[0] * 1,
-]);
-convertedGLSLs_viewport4.appendUniform("pty", "1f", [
-  convertedGLSLs_null4.chans[1] * 1,
-]);
-convertedGLSLs_viewport4.appendUniform("ptunit", "1f", [0.0]);
-convertedGLSLs_viewport4.appendUniform("psx", "1f", [
-  convertedGLSLs_null1.chans[0] * 1,
-]);
-convertedGLSLs_viewport4.appendUniform("psy", "1f", [
-  convertedGLSLs_null1.chans[0] * 1,
-]);
-convertedGLSLs_viewport4.appendUniform("ppx", "1f", [0.5]);
-convertedGLSLs_viewport4.appendUniform("ppy", "1f", [0.5]);
-convertedGLSLs_viewport4.appendUniform("ppunit", "1f", [1.0]);
+convertedGLSLs_viewport2.fragmentShader = "# version 300 es \nprecision highp float;\nin vec3 vUV;\nuniform sampler2D sTD2DInputs[2];\n@TDUniforms@\nuniform vec2 resolution;\nuniform float psize;\nuniform float pprefit;\nuniform float pjustifyh;\nuniform float pjustifyv;\nuniform float pextend;\nuniform float pr;\nuniform float ptx;\nuniform float pty;\nuniform float ptunit;\nuniform float psx;\nuniform float psy;\nuniform float ppx;\nuniform float ppy;\nuniform float ppunit;\nout vec4 fragColor;\nvec4 operation(vec4 a, vec4 b){\nfloat mask = a.a;\nif(mask>0.) a = a/mask;\nvec4 c = mix(b,a,mask);\nreturn c;\n}\nfloat justifyX(vec2 uv0, vec2 thisRes, vec2 fixedRes){\nvec2 uv = uv0;\nif(pjustifyh == 1.) return uv.x-(fixedRes.x-thisRes.x)/fixedRes.x*0.5;\nif(pjustifyh == 2.) return uv.x-(fixedRes.x-thisRes.x)/fixedRes.x;\nreturn uv.x;\n}\nfloat justifyY(vec2 uv0, vec2 thisRes, vec2 fixedRes){\nvec2 uv = uv0;\nif(pjustifyv == 1.) return uv.y-(fixedRes.y-thisRes.y)/fixedRes.y*0.5;\nif(pjustifyv == 2.) return uv.y-(fixedRes.y-thisRes.y)/fixedRes.y;\nreturn uv.y;\n}\nvec2 extend(vec2 uv0,vec2 thisRes){\nvec2 uv = uv0;\nif (pextend == 0.) uv = clamp(uv, 0.5/thisRes,1.0-0.5/thisRes);\nif (pextend == 2.) uv = mod(uv, vec2(1.));\nif (pextend == 3.) {\nuv = mod(uv, vec2(2.));\nif (uv.x > 1.) uv.x = 2. - uv.x;\nif (uv.y > 1.) uv.y = 2. - uv.y;\nuv = uv;\n}\nreturn uv;\n}\nvec2 fitHorizontal(vec2 uv0, vec2 thisRes, vec2 fixedRes){\nvec2 uv = uv0;\nfloat dY = (fixedRes.y/thisRes.y)*(thisRes.x/fixedRes.x);\nuv.y = uv.y*dY-0.5*dY+0.5;\nreturn uv;\n}\nvec2 fitVertical(vec2 uv0, vec2 thisRes, vec2 fixedRes){\nvec2 uv = uv0;\nfloat dX = (fixedRes.x/thisRes.x)*(thisRes.y/fixedRes.y);\nuv.x = uv.x*dX-0.5*dX+0.5;\nreturn uv;\n}\nmat2 getRotMatrix(float _angle){\nreturn mat2(cos(_angle),-sin(_angle),\nsin(_angle),cos(_angle));\n}\nvec2 rotate2(vec2 uv,vec2 fixedRes){\nfloat rad = radians(pr);\nvec2 aspect = fixedRes / fixedRes.y ;\nvec2 newUV = uv;\nnewUV = newUV * aspect;\nnewUV = getRotMatrix(-rad) * newUV;\nnewUV = newUV / aspect;\nreturn newUV;\n}\nvec2 fitResolution(vec2 uv0, vec2 thisRes, vec2 fixedRes){\nvec2 uv = uv0;\nvec2 modRes = thisRes;\nif(pprefit == 0.){\nmodRes = fixedRes;\n}\nif(pprefit == 5.) {\nuv.x = justifyX(uv0, thisRes,fixedRes);\nuv.y = justifyY(uv0, thisRes,fixedRes);\nvec2 dRes = fixedRes/thisRes;\nuv = uv*dRes;\n}\nif(pprefit == 1.) uv = fitHorizontal(uv, thisRes, fixedRes);\nif(pprefit == 2.) uv = fitVertical(uv, thisRes, fixedRes);\nif(pprefit == 3.){\nif(thisRes.x/fixedRes.x<thisRes.y/fixedRes.y) uv = fitVertical(uv, thisRes, fixedRes);\nelse uv = fitHorizontal(uv, thisRes, fixedRes);\n}\nif(pprefit == 4.){\nif(thisRes.x/fixedRes.x>thisRes.y/fixedRes.y) uv = fitVertical(uv, thisRes, fixedRes);\nelse uv = fitHorizontal(uv, thisRes, fixedRes);\n}\nvec2 pivot = vec2(ppx,ppy);\nif (ppunit == 0.) pivot = vec2(ppx,ppy)/resolution;\nif (ppunit == 2.) pivot = vec2(ppx,ppy*resolution.x/resolution.y);\nuv = uv-pivot;\nuv = rotate2(uv,modRes);\nuv.x = uv.x/psx;\nuv.y = uv.y/psy;\nuv = uv+pivot;\nuv = extend(uv, thisRes);\nreturn uv;\n}\nvec2 transform(vec2 uv0){\nif(ptunit == 0.)return uv0-vec2(ptx,pty)/resolution;\nif(ptunit == 1.)return uv0-vec2(ptx,pty);\nif(ptunit == 2.)return uv0-vec2(ptx,pty*resolution.x/resolution.y);\nreturn uv0-vec2(ptx,pty);\n}\nvoid main()\n{\nvec2 uv = vUV.st;\nvec2 uv0 = uv;\nvec2 uv1 = uv;\nvec2 res0 = uTD2DInfos[0].res.zw;\nvec2 res1 = uTD2DInfos[1].res.zw;\nif (psize == 1.)uv0 = fitResolution(transform(uv), res0, res1);\nelse uv1 = fitResolution(transform(uv), res1, res0);\nvec4 a = texture(sTD2DInputs[0], uv0);\nvec4 b = texture(sTD2DInputs[1], uv1);\nif(pextend ==1.){\nif (uv0.x<0.||uv0.x>1.||uv0.y<0.||uv0.y>1.) a = vec4(0.);\nif (uv1.x<0.||uv1.x>1.||uv1.y<0.||uv1.y>1.) b = vec4(0.);\n}\nvec4 c = operation(a,b);\nfragColor = (c);\n}\n";
+convertedGLSLs_viewport2.appendUniform('psize','1f',[1.0]);
+convertedGLSLs_viewport2.appendUniform('pprefit','1f',[5.0]);
+convertedGLSLs_viewport2.appendUniform('pjustifyh','1f',[1.0]);
+convertedGLSLs_viewport2.appendUniform('pjustifyv','1f',[1.0]);
+convertedGLSLs_viewport2.appendUniform('pextend','1f',[2.0]);
+convertedGLSLs_viewport2.appendUniform('pr','1f',[0.0]);
+convertedGLSLs_viewport2.appendUniform('ptx','1f',[convertedGLSLs_null4.chans[0]*1]);
+convertedGLSLs_viewport2.appendUniform('pty','1f',[convertedGLSLs_null4.chans[1]*1]);
+convertedGLSLs_viewport2.appendUniform('ptunit','1f',[0.0]);
+convertedGLSLs_viewport2.appendUniform('psx','1f',[convertedGLSLs_null1.chans[0]*1]);
+convertedGLSLs_viewport2.appendUniform('psy','1f',[convertedGLSLs_null1.chans[0]*1]);
+convertedGLSLs_viewport2.appendUniform('ppx','1f',[0.5]);
+convertedGLSLs_viewport2.appendUniform('ppy','1f',[0.5]);
+convertedGLSLs_viewport2.appendUniform('ppunit','1f',[1.0]);
+convertedGLSLs_level1.fragmentShader = "# version 300 es \nprecision highp float;\nin vec3 vUV;\nuniform sampler2D sTD2DInputs[1];\n@TDUniforms@\nuniform vec2 resolution;\nuniform float pclampinput;\nuniform float pinvert;\nuniform float pblacklevel;\nuniform float pbrightness1;\nuniform float pgamma1;\nuniform float pcontrast;\nuniform float popacity;\nuniform float pclamp;\nout vec4 fragColor;\nvoid main()\n{\nvec4 inputT = texture(sTD2DInputs[0], vUV.st);\nvec4 c = inputT;\nif (pclampinput == 1.) c = clamp(c,0.0,1.0);\nc = ((1.0-inputT)*pinvert+inputT*(1.0-pinvert));\nc = (c-pblacklevel)/(1.0-pblacklevel);\nc = c*pbrightness1;\nc = pow(c,vec4(1.0/clamp(pgamma1,0.,5000.)));\nc = pcontrast*(c-0.5)+0.5;\nc.a = inputT.a;\nc = c*popacity;\nfragColor = (c);\n}\n";
+convertedGLSLs_level1.appendUniform('pclampinput','1f',[0.0]);
+convertedGLSLs_level1.appendUniform('pinvert','1f',[0.0]);
+convertedGLSLs_level1.appendUniform('pblacklevel','1f',[0.0]);
+convertedGLSLs_level1.appendUniform('pbrightness1','1f',[1.0]);
+convertedGLSLs_level1.appendUniform('pgamma1','1f',[1.0]);
+convertedGLSLs_level1.appendUniform('pcontrast','1f',[1.0]);
+convertedGLSLs_level1.appendUniform('popacity','1f',[0.3970000147819519]);
+convertedGLSLs_level1.appendUniform('pclamp','1f',[0.0]);
+convertedGLSLs_over1.fragmentShader = "# version 300 es \nprecision highp float;\nin vec3 vUV;\nuniform sampler2D sTD2DInputs[2];\n@TDUniforms@\nuniform vec2 resolution;\nuniform float psize;\nuniform float pprefit;\nuniform float pjustifyh;\nuniform float pjustifyv;\nuniform float pextend;\nuniform float pr;\nuniform float ptx;\nuniform float pty;\nuniform float ptunit;\nuniform float psx;\nuniform float psy;\nuniform float ppx;\nuniform float ppy;\nuniform float ppunit;\nout vec4 fragColor;\nvec4 operation(vec4 a, vec4 b){\nfloat mask = a.a;\nif(mask>0.) a = a/mask;\nvec4 c = mix(b,a,mask);\nreturn c;\n}\nfloat justifyX(vec2 uv0, vec2 thisRes, vec2 fixedRes){\nvec2 uv = uv0;\nif(pjustifyh == 1.) return uv.x-(fixedRes.x-thisRes.x)/fixedRes.x*0.5;\nif(pjustifyh == 2.) return uv.x-(fixedRes.x-thisRes.x)/fixedRes.x;\nreturn uv.x;\n}\nfloat justifyY(vec2 uv0, vec2 thisRes, vec2 fixedRes){\nvec2 uv = uv0;\nif(pjustifyv == 1.) return uv.y-(fixedRes.y-thisRes.y)/fixedRes.y*0.5;\nif(pjustifyv == 2.) return uv.y-(fixedRes.y-thisRes.y)/fixedRes.y;\nreturn uv.y;\n}\nvec2 extend(vec2 uv0,vec2 thisRes){\nvec2 uv = uv0;\nif (pextend == 0.) uv = clamp(uv, 0.5/thisRes,1.0-0.5/thisRes);\nif (pextend == 2.) uv = mod(uv, vec2(1.));\nif (pextend == 3.) {\nuv = mod(uv, vec2(2.));\nif (uv.x > 1.) uv.x = 2. - uv.x;\nif (uv.y > 1.) uv.y = 2. - uv.y;\nuv = uv;\n}\nreturn uv;\n}\nvec2 fitHorizontal(vec2 uv0, vec2 thisRes, vec2 fixedRes){\nvec2 uv = uv0;\nfloat dY = (fixedRes.y/thisRes.y)*(thisRes.x/fixedRes.x);\nuv.y = uv.y*dY-0.5*dY+0.5;\nreturn uv;\n}\nvec2 fitVertical(vec2 uv0, vec2 thisRes, vec2 fixedRes){\nvec2 uv = uv0;\nfloat dX = (fixedRes.x/thisRes.x)*(thisRes.y/fixedRes.y);\nuv.x = uv.x*dX-0.5*dX+0.5;\nreturn uv;\n}\nmat2 getRotMatrix(float _angle){\nreturn mat2(cos(_angle),-sin(_angle),\nsin(_angle),cos(_angle));\n}\nvec2 rotate2(vec2 uv,vec2 fixedRes){\nfloat rad = radians(pr);\nvec2 aspect = fixedRes / fixedRes.y ;\nvec2 newUV = uv;\nnewUV = newUV * aspect;\nnewUV = getRotMatrix(-rad) * newUV;\nnewUV = newUV / aspect;\nreturn newUV;\n}\nvec2 fitResolution(vec2 uv0, vec2 thisRes, vec2 fixedRes){\nvec2 uv = uv0;\nvec2 modRes = thisRes;\nif(pprefit == 0.){\nmodRes = fixedRes;\n}\nif(pprefit == 5.) {\nuv.x = justifyX(uv0, thisRes,fixedRes);\nuv.y = justifyY(uv0, thisRes,fixedRes);\nvec2 dRes = fixedRes/thisRes;\nuv = uv*dRes;\n}\nif(pprefit == 1.) uv = fitHorizontal(uv, thisRes, fixedRes);\nif(pprefit == 2.) uv = fitVertical(uv, thisRes, fixedRes);\nif(pprefit == 3.){\nif(thisRes.x/fixedRes.x<thisRes.y/fixedRes.y) uv = fitVertical(uv, thisRes, fixedRes);\nelse uv = fitHorizontal(uv, thisRes, fixedRes);\n}\nif(pprefit == 4.){\nif(thisRes.x/fixedRes.x>thisRes.y/fixedRes.y) uv = fitVertical(uv, thisRes, fixedRes);\nelse uv = fitHorizontal(uv, thisRes, fixedRes);\n}\nvec2 pivot = vec2(ppx,ppy);\nif (ppunit == 0.) pivot = vec2(ppx,ppy)/resolution;\nif (ppunit == 2.) pivot = vec2(ppx,ppy*resolution.x/resolution.y);\nuv = uv-pivot;\nuv = rotate2(uv,modRes);\nuv.x = uv.x/psx;\nuv.y = uv.y/psy;\nuv = uv+pivot;\nuv = extend(uv, thisRes);\nreturn uv;\n}\nvec2 transform(vec2 uv0){\nif(ptunit == 0.)return uv0-vec2(ptx,pty)/resolution;\nif(ptunit == 1.)return uv0-vec2(ptx,pty);\nif(ptunit == 2.)return uv0-vec2(ptx,pty*resolution.x/resolution.y);\nreturn uv0-vec2(ptx,pty);\n}\nvoid main()\n{\nvec2 uv = vUV.st;\nvec2 uv0 = uv;\nvec2 uv1 = uv;\nvec2 res0 = uTD2DInfos[0].res.zw;\nvec2 res1 = uTD2DInfos[1].res.zw;\nif (psize == 1.)uv0 = fitResolution(transform(uv), res0, res1);\nelse uv1 = fitResolution(transform(uv), res1, res0);\nvec4 a = texture(sTD2DInputs[0], uv0);\nvec4 b = texture(sTD2DInputs[1], uv1);\nif(pextend ==1.){\nif (uv0.x<0.||uv0.x>1.||uv0.y<0.||uv0.y>1.) a = vec4(0.);\nif (uv1.x<0.||uv1.x>1.||uv1.y<0.||uv1.y>1.) b = vec4(0.);\n}\nvec4 c = operation(a,b);\nfragColor = (c);\n}\n";
+convertedGLSLs_over1.appendUniform('psize','1f',[1.0]);
+convertedGLSLs_over1.appendUniform('pprefit','1f',[0.0]);
+convertedGLSLs_over1.appendUniform('pjustifyh','1f',[1.0]);
+convertedGLSLs_over1.appendUniform('pjustifyv','1f',[1.0]);
+convertedGLSLs_over1.appendUniform('pextend','1f',[1.0]);
+convertedGLSLs_over1.appendUniform('pr','1f',[0.0]);
+convertedGLSLs_over1.appendUniform('ptx','1f',[0.0]);
+convertedGLSLs_over1.appendUniform('pty','1f',[0.0]);
+convertedGLSLs_over1.appendUniform('ptunit','1f',[1.0]);
+convertedGLSLs_over1.appendUniform('psx','1f',[1.0]);
+convertedGLSLs_over1.appendUniform('psy','1f',[1.0]);
+convertedGLSLs_over1.appendUniform('ppx','1f',[0.5]);
+convertedGLSLs_over1.appendUniform('ppy','1f',[0.5]);
+convertedGLSLs_over1.appendUniform('ppunit','1f',[1.0]);
+convertedGLSLs_constant4.fragmentShader = "# version 300 es \nprecision highp float;\nin vec3 vUV;\n@TDUniforms@\nuniform vec2 resolution;\nuniform float pcolorr;\nuniform float pcolorg;\nuniform float pcolorb;\nuniform float palpha;\nuniform float pcombineinput;\nout vec4 fragColor;\nvec4 combineInput(vec4 c){\nvec4 c1 = vec4(1.);\nif (pcombineinput == 1.){\nc = c1*c;\nreturn c;\n}\nreturn c;\n}\nvoid main()\n{\nvec4 c = vec4(pcolorr,pcolorg,pcolorb,palpha);\nc.rgb = c.rgb*c.a;\nc = combineInput(c);\nfragColor = (c);\n}\n";
+convertedGLSLs_constant4.appendUniform('pcolorr','1f',[0.11811800301074982]);
+convertedGLSLs_constant4.appendUniform('pcolorg','1f',[0.12350910902023315]);
+convertedGLSLs_constant4.appendUniform('pcolorb','1f',[0.14300000667572021]);
+convertedGLSLs_constant4.appendUniform('palpha','1f',[1.0]);
+convertedGLSLs_constant4.appendUniform('pcombineinput','1f',[1.0]);
 convertedGLSLs_end.initialize();
 convertedGLSLs_end.update();
 //======================UI=======================
 
 //==============================ANIMATION=========================
-function animate() {
-  theTime.update();
+function animate(){
 
-  if (play) {
-    convertedGLSLs_spritesAva.par.Posx = convertedGLSLs_playerXY.chans[0] * 1;
-    convertedGLSLs_spritesAva.par.Posy = convertedGLSLs_playerXY.chans[1] * 1;
-    convertedGLSLs_spritesAva.par.Scale = convertedGLSLs_scale.chans[0] * 1;
-    convertedGLSLs_spritesAva.par.Avascale =
-      convertedGLSLs_lfo7.chans[0] * 1 - 0.1;
-    convertedGLSLs_spritesAva.par.Posx = convertedGLSLs_playerXY.chans[0] * 1;
-    convertedGLSLs_spritesAva.par.Posy = convertedGLSLs_playerXY.chans[1] * 1;
-    convertedGLSLs_spritesAva.par.Scale = convertedGLSLs_scale.chans[0] * 1;
-    convertedGLSLs_spritesAva.par.Avascale =
-      convertedGLSLs_lfo7.chans[0] * 1 - 0.1;
-    convertedGLSLs_multiplayerCHOP.par.Posx =
-      convertedGLSLs_playerXY.chans[0] * 1;
-    convertedGLSLs_multiplayerCHOP.par.Posy =
-      convertedGLSLs_playerXY.chans[1] * 1;
-    convertedGLSLs_multiplayerCHOP.par.Posx =
-      convertedGLSLs_playerXY.chans[0] * 1;
-    convertedGLSLs_multiplayerCHOP.par.Posy =
-      convertedGLSLs_playerXY.chans[1] * 1;
-    convertedGLSLs_speed3.par.reset = convertedGLSLs_mousein1.chans[2] * 1;
-    convertedGLSLs_lfo7.par.frequency = convertedGLSLs_math15.chans[0] * 1;
-    convertedGLSLs_end.update();
-    convertedGLSLs_viewport3.setUniform1f("ptx", [
-      convertedGLSLs_null4.chans[0] * 1,
-    ]);
-    convertedGLSLs_viewport3.setUniform1f("pty", [
-      convertedGLSLs_null4.chans[1] * 1,
-    ]);
-    convertedGLSLs_viewport3.setUniform1f("psx", [
-      convertedGLSLs_null1.chans[0] * 1,
-    ]);
-    convertedGLSLs_viewport3.setUniform1f("psy", [
-      convertedGLSLs_null1.chans[0] * 1,
-    ]);
-    convertedGLSLs_transform1.setUniform1f("psx", [
-      convertedGLSLs_lfo7.chans[0] * 1,
-    ]);
-    convertedGLSLs_transform1.setUniform1f("psy", [
-      convertedGLSLs_lfo7.chans[0] * 1,
-    ]);
-    convertedGLSLs_viewport4.setUniform1f("ptx", [
-      convertedGLSLs_null4.chans[0] * 1,
-    ]);
-    convertedGLSLs_viewport4.setUniform1f("pty", [
-      convertedGLSLs_null4.chans[1] * 1,
-    ]);
-    convertedGLSLs_viewport4.setUniform1f("psx", [
-      convertedGLSLs_null1.chans[0] * 1,
-    ]);
-    convertedGLSLs_viewport4.setUniform1f("psy", [
-      convertedGLSLs_null1.chans[0] * 1,
-    ]);
-  } //END PLAY
+  theTime.update();
+  
+
+  if (play){
+
+convertedGLSLs_multiplayerCHOP.par.Posx = convertedGLSLs_playerXY.chans[0]*1;
+convertedGLSLs_multiplayerCHOP.par.Posy = convertedGLSLs_playerXY.chans[1]*1;
+convertedGLSLs_multiplayerCHOP.par.Posx = convertedGLSLs_playerXY.chans[0]*1;
+convertedGLSLs_multiplayerCHOP.par.Posy = convertedGLSLs_playerXY.chans[1]*1;
+convertedGLSLs_spritesAva.par.Posx = convertedGLSLs_playerXY.chans[0]*1;
+convertedGLSLs_spritesAva.par.Posy = convertedGLSLs_playerXY.chans[1]*1;
+convertedGLSLs_spritesAva.par.Scale = convertedGLSLs_scale.chans[0]*1;
+convertedGLSLs_spritesAva.par.Posx = convertedGLSLs_playerXY.chans[0]*1;
+convertedGLSLs_spritesAva.par.Posy = convertedGLSLs_playerXY.chans[1]*1;
+convertedGLSLs_spritesAva.par.Scale = convertedGLSLs_scale.chans[0]*1;
+convertedGLSLs_end.update();
+convertedGLSLs_viewport2.setUniform1f('ptx',[convertedGLSLs_null4.chans[0]*1]);
+convertedGLSLs_viewport2.setUniform1f('pty',[convertedGLSLs_null4.chans[1]*1]);
+convertedGLSLs_viewport2.setUniform1f('psx',[convertedGLSLs_null1.chans[0]*1]);
+convertedGLSLs_viewport2.setUniform1f('psy',[convertedGLSLs_null1.chans[0]*1]);
+ 
+}//END PLAY
   //requestAnimationFrame(animate);
 }
 //requestAnimationFrame(animate);
-setInterval(animate, 1000 / 60.0);
-function onResizeWindow(event) {
-  console.log("RESIZE SHADERS");
-  onNeedResizeCanvas();
-  convertedGLSLs_end.resize();
+setInterval(animate, 1000 / 60.0); 
+function onResizeWindow( event ) {console.log('RESIZE SHADERS');
+onNeedResizeCanvas();
+convertedGLSLs_end.resize();
+
 }
 
-window.addEventListener("resize", throttle(onResizeWindow, 100), false);
+  window.addEventListener( 'resize', throttle(onResizeWindow, 100), false );
+

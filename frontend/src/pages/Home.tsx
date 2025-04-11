@@ -1,4 +1,4 @@
-import React from "react";
+import React from 'react';
 import {
   Box,
   Heading,
@@ -8,36 +8,28 @@ import {
   SimpleGrid,
   Icon,
   useColorModeValue,
-} from "@chakra-ui/react";
-import { useNavigate } from "react-router-dom";
-import { useAuth } from "../contexts/AuthContext";
-import { FaEthereum, FaUsers, FaLock } from "react-icons/fa";
+} from '@chakra-ui/react';
+import { useNavigate } from 'react-router-dom';
+import { useAuth } from '../contexts/AuthContext';
+import { FaEthereum, FaUsers, FaLock } from 'react-icons/fa';
 
-const Feature = ({
-  title,
-  text,
-  icon,
-}: {
-  title: string;
-  text: string;
-  icon: React.ElementType;
-}) => {
+const Feature = ({ title, text, icon }: { title: string; text: string; icon: React.ElementType }) => {
   return (
     <VStack
       align="start"
       p={6}
-      bg={useColorModeValue("white", "gray.800")}
+      bg={useColorModeValue('white', 'gray.800')}
       rounded="xl"
       border="1px"
-      borderColor={useColorModeValue("gray.200", "gray.700")}
-      _hover={{ shadow: "lg" }}
+      borderColor={useColorModeValue('gray.200', 'gray.700')}
+      _hover={{ shadow: 'lg' }}
       transition="all 0.3s"
     >
       <Icon as={icon} w={10} h={10} color="blue.500" />
       <Text fontWeight="bold" fontSize="lg">
         {title}
       </Text>
-      <Text color={useColorModeValue("gray.600", "gray.400")}>{text}</Text>
+      <Text color={useColorModeValue('gray.600', 'gray.400')}>{text}</Text>
     </VStack>
   );
 };
@@ -59,14 +51,14 @@ const Home = () => {
           Welcome to No There
         </Heading>
         <Text fontSize="xl" textAlign="center" maxW="3xl">
-          Experience the future of online gaming with blockchain integration,
-          real-time multiplayer interactions, and immersive gameplay.
+          Experience the future of online gaming with blockchain integration, real-time multiplayer
+          interactions, and immersive gameplay.
         </Text>
         {isAuthenticated ? (
           <Button
             size="lg"
             colorScheme="blue"
-            onClick={() => navigate("/game")}
+            onClick={() => navigate('/game')}
           >
             Start Playing
           </Button>
@@ -74,7 +66,7 @@ const Home = () => {
           <Button
             size="lg"
             colorScheme="blue"
-            onClick={() => navigate("/login")}
+            onClick={() => navigate('/login')}
           >
             Connect to Play
           </Button>
@@ -102,4 +94,4 @@ const Home = () => {
   );
 };
 
-export default Home;
+export default Home; 

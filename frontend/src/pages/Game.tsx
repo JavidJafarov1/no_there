@@ -1,4 +1,4 @@
-import React, { useEffect, useState, useCallback } from "react";
+import React, { useEffect, useState, useCallback } from 'react';
 import {
   Box,
   VStack,
@@ -7,11 +7,11 @@ import {
   Button,
   useToast,
   useColorModeValue,
-} from "@chakra-ui/react";
-import { useAuth } from "../contexts/AuthContext";
-import { useNavigate } from "react-router-dom";
-import { GameEngine } from "../services/GameEngine";
-import { GameSocket } from "../services/GameSocket";
+} from '@chakra-ui/react';
+import { useAuth } from '../contexts/AuthContext';
+import { useNavigate } from 'react-router-dom';
+import { GameEngine } from '../services/GameEngine';
+import { GameSocket } from '../services/GameSocket';
 
 const Game: React.FC = () => {
   const { user, walletAddress, isAuthenticated } = useAuth();
@@ -23,7 +23,7 @@ const Game: React.FC = () => {
   const toast = useToast();
 
   const handleResize = useCallback(() => {
-    const canvas = document.getElementById("canvas") as HTMLCanvasElement;
+    const canvas = document.getElementById('canvas') as HTMLCanvasElement;
     if (canvas) {
       const container = canvas.parentElement;
       if (container) {
@@ -33,118 +33,106 @@ const Game: React.FC = () => {
     }
   }, []);
 
-  const handleKeyDown = useCallback(
-    (event: KeyboardEvent) => {
-      // Check socket connection
-      if (!isSocketConnected) {
-        console.warn("Socket not connected - cannot sync movement with server");
+  const handleKeyDown = useCallback((event: KeyboardEvent) => {
+    // Check socket connection
+    if (!isSocketConnected) {
+      console.warn('Socket not connected - cannot sync movement with server');
+      return;
+    }
+
+    // Check game engine and its readiness
+    if (!window.gameEngine) {
+      console.warn('Game engine not loaded - cannot process movement');
+      return;
+    }
+
+    // Check if game engine is initialized
+    if (!isEngineLoaded) {
+      console.warn('Game engine not initialized yet');
+      return;
+    }
+
+    // Check if game engine has required methods
+    if (typeof window.gameEngine.getPlayerPosition !== 'function' || 
+        typeof window.gameEngine.updatePlayerPosition !== 'function') {
+      console.warn('Game engine missing required methods - cannot process movement');
+      return;
+    }
+
+    const moveSpeed = 10;
+    let dx = 0;
+    let dy = 0;
+
+    switch (event.key) {
+      case 'ArrowUp':
+        dy = -moveSpeed;
+        break;
+      case 'ArrowDown':
+        dy = moveSpeed;
+        break;
+      case 'ArrowLeft':
+        dx = -moveSpeed;
+        break;
+      case 'ArrowRight':
+        dx = moveSpeed;
+        break;
+      default:
+        return;
+    }
+
+    try {
+      // Get current position from game engine
+      const currentPosition = window.gameEngine.getPlayerPosition();
+      if (!currentPosition) {
+        console.warn('Could not get current position from game engine');
         return;
       }
+      
+      // Calculate new position with bounds checking
+      const newPosition = {
+        x: Math.max(0, Math.min(1000, currentPosition.x + dx)),
+        y: Math.max(0, Math.min(1000, currentPosition.y + dy))
+      };
 
-      // Check game engine and its readiness
-      if (!window.gameEngine) {
-        console.warn("Game engine not loaded - cannot process movement");
-        return;
-      }
+      // Update position in game engine
+      window.gameEngine.updatePlayerPosition(newPosition.x, newPosition.y);
 
-      // Check if game engine is initialized
-      if (!isEngineLoaded) {
-        console.warn("Game engine not initialized yet");
-        return;
-      }
-
-      // Check if game engine has required methods
-      if (
-        typeof window.gameEngine.getPlayerPosition !== "function" ||
-        typeof window.gameEngine.updatePlayerPosition !== "function"
-      ) {
-        console.warn(
-          "Game engine missing required methods - cannot process movement"
-        );
-        return;
-      }
-
-      const moveSpeed = 10;
-      let dx = 0;
-      let dy = 0;
-
-      switch (event.key) {
-        case "ArrowUp":
-          dy = -moveSpeed;
-          break;
-        case "ArrowDown":
-          dy = moveSpeed;
-          break;
-        case "ArrowLeft":
-          dx = -moveSpeed;
-          break;
-        case "ArrowRight":
-          dx = moveSpeed;
-          break;
-        default:
-          return;
-      }
-
-      try {
-        // Get current position from game engine
-        const currentPosition = window.gameEngine.getPlayerPosition();
-        if (!currentPosition) {
-          console.warn("Could not get current position from game engine");
-          return;
-        }
-
-        // Calculate new position with bounds checking
-        const newPosition = {
-          x: Math.max(0, Math.min(1000, currentPosition.x + dx)),
-          y: Math.max(0, Math.min(1000, currentPosition.y + dy)),
-        };
-
-        // Update position in game engine
-        window.gameEngine.updatePlayerPosition(newPosition.x, newPosition.y);
-
-        // Emit movement to server
-        if (gameSocket?.isConnected()) {
-          gameSocket.emit("userMovement", {
-            position: newPosition,
-            timestamp: Date.now(),
-          });
-
-          // Check for prizes to claim
-          gameSocket.emit("checkPrize", {
-            position: newPosition,
-          });
-        } else {
-          console.warn("Socket not connected, movement not synced");
-        }
-      } catch (error) {
-        console.error("Error handling movement:", error);
-        toast({
-          title: "Movement Error",
-          description: "Failed to update position",
-          status: "error",
-          duration: 3000,
+      // Emit movement to server
+      if (gameSocket?.isConnected()) {
+        gameSocket.emit('userMovement', {
+          position: newPosition,
+          timestamp: Date.now()
         });
+      } else {
+        console.warn('Socket not connected, movement not synced');
       }
-    },
-    [isSocketConnected, gameSocket, toast, isEngineLoaded]
-  );
+    } catch (error) {
+      console.error('Error handling movement:', error);
+      toast({
+        title: 'Movement Error',
+        description: 'Failed to update position',
+        status: 'error',
+        duration: 3000,
+      });
+    }
+  }, [isSocketConnected, gameSocket, toast, isEngineLoaded]);
 
   useEffect(() => {
     if (!walletAddress) {
-      navigate("/");
+      navigate('/');
       return;
     }
   }, [walletAddress, navigate]);
 
   useEffect(() => {
     // Add event listeners
-    window.addEventListener("resize", handleResize);
-    window.addEventListener("keydown", handleKeyDown);
+    window.addEventListener('resize', handleResize);
+    window.addEventListener('keydown', handleKeyDown);
 
     // Cleanup event listeners
     return () => {
-      window.removeEventListener("resize", handleResize);
-      window.removeEventListener("keydown", handleKeyDown);
+      window.removeEventListener('resize', handleResize);
+      window.removeEventListener('keydown', handleKeyDown);
     };
   }, [handleResize, handleKeyDown]);
 
@@ -164,20 +152,18 @@ const Game: React.FC = () => {
     setIsSocketConnected(false);
 
     // Clean up the canvas and observer
-    const container = document.getElementById("game-container");
+    const container = document.getElementById('game-container');
     if (container) {
       // Remove canvas
-      const canvas = document.getElementById("canvas");
+      const canvas = document.getElementById('canvas');
       if (canvas) {
         container.removeChild(canvas);
       }
     }
 
     // Remove all scripts
-    const scriptsToRemove = document.querySelectorAll(
-      "script[data-game-script]"
-    );
-    scriptsToRemove.forEach((script) => script.remove());
+    const scriptsToRemove = document.querySelectorAll('script[data-game-script]');
+    scriptsToRemove.forEach(script => script.remove());
 
     // Remove style
     const styleLink = document.querySelector('link[href="/style.css"]');
@@ -186,27 +172,27 @@ const Game: React.FC = () => {
     }
 
     // Wait a bit to ensure cleanup is complete
-    await new Promise((resolve) => setTimeout(resolve, 100));
+    await new Promise(resolve => setTimeout(resolve, 100));
   };
 
   const initializeGame = async () => {
-    console.log("Starting game initialization...");
+    console.log('Starting game initialization...');
     try {
       // Clean up existing game state
       await leaveGame();
-
+      
       // Create new canvas
-      const container = document.getElementById("game-container");
+      const container = document.getElementById('game-container');
       if (!container) {
-        throw new Error("Game container not found");
+        throw new Error('Game container not found');
       }
 
-      const canvas = document.createElement("canvas");
-      canvas.id = "canvas";
-      canvas.style.width = "100%";
-      canvas.style.height = "100%";
+      const canvas = document.createElement('canvas');
+      canvas.id = 'canvas';
+      canvas.style.width = '100%';
+      canvas.style.height = '100%';
       container.appendChild(canvas);
-      console.log("Canvas created and added to container");
+      console.log('Canvas created and added to container');
 
       // Set initial canvas dimensions
       const containerWidth = container.clientWidth;
@@ -218,9 +204,7 @@ const Game: React.FC = () => {
       const resizeObserver = new ResizeObserver((entries) => {
         for (const entry of entries) {
           if (entry.target === container) {
-            const canvas = document.getElementById(
-              "canvas"
-            ) as HTMLCanvasElement;
+            const canvas = document.getElementById('canvas') as HTMLCanvasElement;
             if (canvas) {
               canvas.width = entry.contentRect.width;
               canvas.height = entry.contentRect.height;
@@ -231,61 +215,55 @@ const Game: React.FC = () => {
       resizeObserver.observe(container);
 
       // Load game engine script with cache busting
-      console.log("Loading game engine script...");
+      console.log('Loading game engine script...');
       const timestamp = Date.now();
 
       // Load all required scripts in sequence
       const loadScript = async (src: string): Promise<void> => {
         return new Promise((resolve, reject) => {
-          const script = document.createElement("script");
+          const script = document.createElement('script');
           script.src = src;
-          script.type = "text/javascript";
+          script.type = 'text/javascript';
           script.onload = () => resolve();
-          script.onerror = () =>
-            reject(new Error(`Failed to load script: ${src}`));
+          script.onerror = () => reject(new Error(`Failed to load script: ${src}`));
           document.head.appendChild(script);
         });
       };
 
       // Load style.css first
-      const styleLink = document.createElement("link");
-      styleLink.rel = "stylesheet";
-      styleLink.href = "/style.css";
+      const styleLink = document.createElement('link');
+      styleLink.rel = 'stylesheet';
+      styleLink.href = '/style.css';
       document.head.appendChild(styleLink);
 
       try {
         // Load dependencies in order
-        console.log("Loading dependencies...");
-        await loadScript(
-          "https://cdnjs.cloudflare.com/ajax/libs/gl-matrix/2.8.1/gl-matrix-min.js"
-        );
-        await loadScript("https://cdn.socket.io/4.5.4/socket.io.min.js");
-
+        console.log('Loading dependencies...');
+        await loadScript('https://cdnjs.cloudflare.com/ajax/libs/gl-matrix/2.8.1/gl-matrix-min.js');
+        await loadScript('https://cdn.socket.io/4.5.4/socket.io.min.js');
+        
         // Load main game script with absolute path
-        console.log("Loading main game script...");
-
+        console.log('Loading main game script...');
+        
         // First verify the file is accessible
         try {
-          const response = await fetch("/artwork.js");
+          const response = await fetch('/artwork.js');
           if (!response.ok) {
-            throw new Error(
-              `Failed to fetch artwork.js: ${response.status} ${response.statusText}`
-            );
+            throw new Error(`Failed to fetch artwork.js: ${response.status} ${response.statusText}`);
           }
           const content = await response.text();
-          console.log("Artwork.js content check:", {
+          console.log('Artwork.js content check:', {
             length: content.length,
-            hasTimeClass: content.includes("class Time"),
-            hasCirclesClass: content.includes("class ConvertedGLSLs_circles"),
-            hasOPClass: content.includes("class OP"),
-            hasPrizesClass: content.includes("class ConvertedGLSLs_prizes"),
-            firstFewChars: content.substring(0, 100),
+            hasTimeClass: content.includes('class Time'),
+            hasCirclesClass: content.includes('class ConvertedGLSLs_circles'),
+            hasOPClass: content.includes('class OP'),
+            firstFewChars: content.substring(0, 100)
           });
 
           // Create a script element to execute the content
-          const scriptElement = document.createElement("script");
-          scriptElement.type = "text/javascript";
-
+          const scriptElement = document.createElement('script');
+          scriptElement.type = 'text/javascript';
+          
           // Wrap the content in an IIFE to ensure proper scope
           const wrappedContent = `
             (function(window) {
@@ -294,10 +272,9 @@ const Game: React.FC = () => {
               window.Time = Time;
               window.OP = OP;
               window.ConvertedGLSLs_circles = ConvertedGLSLs_circles;
-              window.ConvertedGLSLs_prizes = ConvertedGLSLs_prizes;
             })(window);
           `;
-
+          
           scriptElement.textContent = wrappedContent;
           document.head.appendChild(scriptElement);
 
@@ -306,32 +283,26 @@ const Game: React.FC = () => {
             const timeClass = (window as any).Time;
             const circlesClass = (window as any).ConvertedGLSLs_circles;
             const opClass = (window as any).OP;
-            const prizesClass = (window as any).ConvertedGLSLs_prizes;
-
-            console.log("Class availability check:", {
+            
+            console.log('Class availability check:', {
               Time: {
                 exists: !!timeClass,
                 type: typeof timeClass,
-                constructor: timeClass?.toString?.(),
+                constructor: timeClass?.toString?.()
               },
               ConvertedGLSLs_circles: {
                 exists: !!circlesClass,
                 type: typeof circlesClass,
-                constructor: circlesClass?.toString?.(),
+                constructor: circlesClass?.toString?.()
               },
               OP: {
                 exists: !!opClass,
                 type: typeof opClass,
-                constructor: opClass?.toString?.(),
-              },
-              ConvertedGLSLs_prizes: {
-                exists: !!prizesClass,
-                type: typeof prizesClass,
-                constructor: prizesClass?.toString?.(),
-              },
+                constructor: opClass?.toString?.()
+              }
             });
 
-            return timeClass && circlesClass && opClass && prizesClass;
+            return timeClass && circlesClass && opClass;
           };
 
           // Wait for classes to be available
@@ -345,31 +316,30 @@ const Game: React.FC = () => {
                 resolve();
               } else if (attempts >= maxAttempts) {
                 clearInterval(interval);
-                reject(
-                  new Error("Required classes not found after script execution")
-                );
+                reject(new Error('Required classes not found after script execution'));
               }
             }, 100);
           });
+
         } catch (error) {
-          console.error("Failed to load artwork.js:", error);
+          console.error('Failed to load artwork.js:', error);
           throw error;
         }
 
         // Initialize socket connection
-        console.log("Initializing socket connection...");
+        console.log('Initializing socket connection...');
         const socket = new GameSocket({
-          serverUrl: "http://localhost:3001",
+          serverUrl: 'http://localhost:3001',
           onConnect: () => {
-            console.log("Socket connected successfully");
+            console.log('Socket connected successfully');
             setIsSocketConnected(true);
           },
           onDisconnect: (reason: string) => {
-            console.log("Socket disconnected:", reason);
+            console.log('Socket disconnected:', reason);
             setIsSocketConnected(false);
           },
           onError: (error: Error) => {
-            console.error("Socket error:", error);
+            console.error('Socket error:', error);
             setIsSocketConnected(false);
           },
         });
@@ -377,11 +347,11 @@ const Game: React.FC = () => {
         // Wait for socket connection before proceeding
         await new Promise<void>((resolve, reject) => {
           const timeout = setTimeout(() => {
-            reject(new Error("Socket connection timeout"));
+            reject(new Error('Socket connection timeout'));
           }, 10000); // 10 second timeout
 
           socket.connect();
-
+          
           const checkConnection = () => {
             if (socket.isConnected()) {
               clearTimeout(timeout);
@@ -390,118 +360,51 @@ const Game: React.FC = () => {
               setTimeout(checkConnection, 100);
             }
           };
-
+          
           checkConnection();
         });
 
         setGameSocket(socket);
-        console.log("Socket connection established and stored");
+        console.log('Socket connection established and stored');
 
         // Now that we know the script is loaded and executed, initialize the engine
-        console.log("Initializing game engine...");
-
+        console.log('Initializing game engine...');
+        
         // Get WebGL2 context
-        const canvas = document.getElementById("canvas") as HTMLCanvasElement;
-        const gl = canvas.getContext("webgl2");
+        const canvas = document.getElementById('canvas') as HTMLCanvasElement;
+        const gl = canvas.getContext('webgl2');
         if (!gl) {
-          throw new Error("WebGL2 context not available");
+          throw new Error('WebGL2 context not available');
         }
 
         // Create Time instance
         const time = new (window as any).Time();
-        console.log("Time instance created");
+        console.log('Time instance created');
 
         // Create game engine instance
-        (window as any).gameEngine = new (window as any).ConvertedGLSLs_circles(
-          "gameEngine",
-          time,
-          gl
-        );
-        console.log("Game engine instance created");
-
-        // Create prizes engine
-        (window as any).prizesEngine = new (
-          window as any
-        ).ConvertedGLSLs_prizes("prizesEngine", time, gl);
-        console.log("Prizes engine instance created");
+        (window as any).gameEngine = new (window as any).ConvertedGLSLs_circles('gameEngine', time, gl);
+        console.log('Game engine instance created');
 
         // Initialize required properties
         (window as any).gameEngine.par = {
-          Multiplayerop: [
-            {
-              players: {},
-              updatePlayer: (playerId: string, data: any) => {
-                if (!(window as any).gameEngine.par.Multiplayerop[0].players) {
-                  (window as any).gameEngine.par.Multiplayerop[0].players = {};
-                }
-                (window as any).gameEngine.par.Multiplayerop[0].players[
-                  playerId
-                ] = data;
-              },
-            },
-          ],
-          Avaop: [
-            {
-              loadedImages: new Map(),
-              addImage: (id: string, data: any) => {
-                if (!(window as any).gameEngine.par.Avaop[0].loadedImages) {
-                  (window as any).gameEngine.par.Avaop[0].loadedImages =
-                    new Map();
-                }
-                (window as any).gameEngine.par.Avaop[0].loadedImages.set(
-                  id,
-                  data
-                );
-              },
-            },
-          ],
-        };
-
-        // Initialize prizes engine properties
-        (window as any).prizesEngine.par = {
-          PrizesOp: [
-            {
-              prizes: {},
-              updatePrize: (prizeId: string, data: any) => {
-                if (!(window as any).prizesEngine.par.PrizesOp[0].prizes) {
-                  (window as any).prizesEngine.par.PrizesOp[0].prizes = {};
-                }
-                (window as any).prizesEngine.par.PrizesOp[0].prizes[prizeId] =
-                  data;
-              },
-            },
-          ],
-          Avaop: [
-            {
-              loadedImages: new Map(),
-              addImage: (id: string, data: any) => {
-                if (!(window as any).prizesEngine.par.Avaop[0].loadedImages) {
-                  (window as any).prizesEngine.par.Avaop[0].loadedImages =
-                    new Map();
-                }
-                (window as any).prizesEngine.par.Avaop[0].loadedImages.set(
-                  id,
-                  data
-                );
-              },
-            },
-          ],
-          Multiplayerop: [
-            {
-              players: {},
-              updatePlayer: (playerId: string, data: any) => {
-                if (
-                  !(window as any).prizesEngine.par.Multiplayerop[0].players
-                ) {
-                  (window as any).prizesEngine.par.Multiplayerop[0].players =
-                    {};
-                }
-                (window as any).prizesEngine.par.Multiplayerop[0].players[
-                  playerId
-                ] = data;
-              },
-            },
-          ],
+          Multiplayerop: [{
+            players: {},
+            updatePlayer: (playerId: string, data: any) => {
+              if (!(window as any).gameEngine.par.Multiplayerop[0].players) {
+                (window as any).gameEngine.par.Multiplayerop[0].players = {};
+              }
+              (window as any).gameEngine.par.Multiplayerop[0].players[playerId] = data;
+            }
+          }],
+          Avaop: [{
+            loadedImages: new Map(),
+            addImage: (id: string, data: any) => {
+              if (!(window as any).gameEngine.par.Avaop[0].loadedImages) {
+                (window as any).gameEngine.par.Avaop[0].loadedImages = new Map();
+              }
+              (window as any).gameEngine.par.Avaop[0].loadedImages.set(id, data);
+            }
+          }]
         };
 
         // Add player movement methods
@@ -509,20 +412,19 @@ const Game: React.FC = () => {
           try {
             const playerId = socket.getSocketId();
             if (!playerId) {
-              console.warn("No player ID available - socket not connected");
+              console.warn('No player ID available - socket not connected');
               return { x: 500, y: 500 }; // Return default position
             }
-
-            const players = (window as any).gameEngine.par.Multiplayerop[0]
-              .players;
+            
+            const players = (window as any).gameEngine.par.Multiplayerop[0].players;
             if (!players) {
-              console.warn("Players object not initialized");
+              console.warn('Players object not initialized');
               return { x: 500, y: 500 }; // Return default position
             }
 
             const player = players[playerId];
             if (!player) {
-              console.warn("Player not found, initializing new player");
+              console.warn('Player not found, initializing new player');
               // Initialize new player
               players[playerId] = {
                 x: 500,
@@ -530,36 +432,32 @@ const Game: React.FC = () => {
                 size: 50,
                 r: Math.random(),
                 g: Math.random(),
-                b: Math.random(),
+                b: Math.random()
               };
               return { x: 500, y: 500 };
             }
-
+            
             return {
               x: player.x || 500,
-              y: player.y || 500,
+              y: player.y || 500
             };
           } catch (error) {
-            console.error("Error getting player position:", error);
+            console.error('Error getting player position:', error);
             return { x: 500, y: 500 }; // Return default position on error
           }
         };
 
-        (window as any).gameEngine.updatePlayerPosition = (
-          x: number,
-          y: number
-        ) => {
+        (window as any).gameEngine.updatePlayerPosition = (x: number, y: number) => {
           try {
             const playerId = socket.getSocketId();
             if (!playerId) {
-              console.warn("No player ID available - socket not connected");
+              console.warn('No player ID available - socket not connected');
               return;
             }
-
-            const players = (window as any).gameEngine.par.Multiplayerop[0]
-              .players;
+            
+            const players = (window as any).gameEngine.par.Multiplayerop[0].players;
             if (!players) {
-              console.warn("Players object not initialized");
+              console.warn('Players object not initialized');
               return;
             }
 
@@ -571,24 +469,21 @@ const Game: React.FC = () => {
                 size: 50,
                 r: Math.random(),
                 g: Math.random(),
-                b: Math.random(),
+                b: Math.random()
               };
             } else {
               players[playerId].x = x;
               players[playerId].y = y;
             }
-
+            
             // Update the sprite position
-            const sprite = (window as any).gameEngine.sprites?.find(
-              (s: any) => s.id === playerId
-            );
+            const sprite = (window as any).gameEngine.sprites?.find((s: any) => s.id === playerId);
             if (sprite) {
               sprite.x = x / 1000;
               sprite.y = y / 1000;
             } else {
               // Create new sprite if not exists
-              (window as any).gameEngine.sprites =
-                (window as any).gameEngine.sprites || [];
+              (window as any).gameEngine.sprites = (window as any).gameEngine.sprites || [];
               (window as any).gameEngine.sprites.push({
                 id: playerId,
                 x: x / 1000,
@@ -600,233 +495,60 @@ const Game: React.FC = () => {
                 endV: 1,
                 r: players[playerId].r,
                 g: players[playerId].g,
-                b: players[playerId].b,
+                b: players[playerId].b
               });
             }
           } catch (error) {
-            console.error("Error updating player position:", error);
-          }
-        };
-
-        // Add updatePlayers method to handle player updates from server
-        (window as any).gameEngine.updatePlayers = (
-          players: Record<string, any>
-        ) => {
-          try {
-            console.log("Updating players from server data:", players);
-
-            // Store player data
-            const multiplayerOp = (window as any).gameEngine.par
-              .Multiplayerop[0];
-            if (!multiplayerOp) {
-              console.warn("Multiplayer operation not initialized");
-              return;
-            }
-
-            // Copy players to our local object
-            multiplayerOp.players = { ...players };
-
-            // Update sprite positions based on player data
-            if ((window as any).gameEngine.sprites) {
-              // Filter out existing player sprites
-              (window as any).gameEngine.sprites = (
-                window as any
-              ).gameEngine.sprites.filter((sprite: any) => {
-                // Keep sprites that are not players (like prizes)
-                return !sprite.id || !players[sprite.id];
-              });
-            } else {
-              (window as any).gameEngine.sprites = [];
-            }
-
-            // Create sprites for all players
-            for (const playerId in players) {
-              const player = players[playerId];
-              if (!player) continue;
-
-              (window as any).gameEngine.sprites.push({
-                id: playerId,
-                x: player.x / 1000,
-                y: player.y / 1000,
-                size: 0.05,
-                startU: 0,
-                startV: 0,
-                endU: 1,
-                endV: 1,
-                r: player.r || Math.random(),
-                g: player.g || Math.random(),
-                b: player.b || Math.random(),
-              });
-            }
-          } catch (error) {
-            console.error("Error updating players:", error);
-          }
-        };
-
-        // Add addPlayer method to handle new players
-        (window as any).gameEngine.addPlayer = (
-          id: string,
-          position: { x: number; y: number }
-        ) => {
-          try {
-            console.log("Adding new player:", id, position);
-
-            // Add to player data
-            const multiplayerOp = (window as any).gameEngine.par
-              .Multiplayerop[0];
-            if (!multiplayerOp) {
-              console.warn("Multiplayer operation not initialized");
-              return;
-            }
-
-            // Create player with random color
-            multiplayerOp.players[id] = {
-              x: position.x,
-              y: position.y,
-              size: 50,
-              r: Math.random(),
-              g: Math.random(),
-              b: Math.random(),
-            };
-
-            // Add sprite
-            (window as any).gameEngine.sprites =
-              (window as any).gameEngine.sprites || [];
-            (window as any).gameEngine.sprites.push({
-              id: id,
-              x: position.x / 1000,
-              y: position.y / 1000,
-              size: 0.05,
-              startU: 0,
-              startV: 0,
-              endU: 1,
-              endV: 1,
-              r: multiplayerOp.players[id].r,
-              g: multiplayerOp.players[id].g,
-              b: multiplayerOp.players[id].b,
-            });
-          } catch (error) {
-            console.error("Error adding player:", error);
-          }
-        };
-
-        // Add removePlayer method
-        (window as any).gameEngine.removePlayer = (id: string) => {
-          try {
-            console.log("Removing player:", id);
-
-            // Remove from player data
-            const multiplayerOp = (window as any).gameEngine.par
-              .Multiplayerop[0];
-            if (multiplayerOp && multiplayerOp.players) {
-              delete multiplayerOp.players[id];
-            }
-
-            // Remove sprite
-            if ((window as any).gameEngine.sprites) {
-              (window as any).gameEngine.sprites = (
-                window as any
-              ).gameEngine.sprites.filter((sprite: any) => sprite.id !== id);
-            }
-          } catch (error) {
-            console.error("Error removing player:", error);
+            console.error('Error updating player position:', error);
           }
         };
 
         // Initialize the engine
         (window as any).gameEngine.doInit();
-        console.log("Game engine initialized with doInit()");
-
-        // Initialize the prizes engine
-        (window as any).prizesEngine.doInit();
-        console.log("Prizes engine initialized with doInit()");
-
-        // Connect the prizes engine to the socket
-        if ((window as any).connectGameToSocket) {
-          (window as any).connectGameToSocket(socket.getSocket());
-          console.log("Connected prizes engine to socket");
-        } else {
-          console.warn("connectGameToSocket function not found");
-        }
-
+        console.log('Game engine initialized with doInit()');
+          
         // Start animation loop
         if (!(window as any).animationStarted) {
           (window as any).animationStarted = true;
           (function animate() {
-            try {
-              time.update();
-
-              // Update game engine with error handling
-              if ((window as any).gameEngine) {
-                try {
-                  (window as any).gameEngine.update();
-                } catch (gameError) {
-                  console.error("Error updating game engine:", gameError);
-                }
-              }
-
-              // Update prizes engine with error handling
-              if ((window as any).prizesEngine) {
-                try {
-                  (window as any).prizesEngine.update();
-                } catch (prizeError) {
-                  console.error("Error updating prizes engine:", prizeError);
-                }
-              }
-
-              requestAnimationFrame(animate);
-            } catch (error) {
-              console.error("Animation loop error:", error);
+            time.update();
+            if ((window as any).gameEngine) {
+              (window as any).gameEngine.update();
             }
+            requestAnimationFrame(animate);
           })();
-          console.log("Animation loop started");
+          console.log('Animation loop started');
         }
 
         setIsEngineLoaded(true);
         toast({
-          title: "Game initialized successfully",
-          status: "success",
+          title: 'Game initialized successfully',
+          status: 'success',
           duration: 3000,
         });
 
-        // Authenticate with server
-        socket.emit("authenticate", {
-          address:
-            walletAddress || `player-${socket.getSocketId() || "unknown"}`,
-        });
-
-        // Keep only the UI-related socket event handlers
-        socket.on("got_prize", (prize) => {
-          toast({
-            title: `Prize Claimed!`,
-            description: `You collected a ${prize.type} worth ${prize.value}`,
-            status: "success",
-            duration: 3000,
-          });
-        });
       } catch (error) {
-        console.error("Game initialization failed:", error);
+        console.error('Game initialization failed:', error);
         setIsSocketConnected(false);
         setIsEngineLoaded(false);
         toast({
-          title: "Initialization Error",
-          description:
-            error instanceof Error ? error.message : "Unknown error occurred",
-          status: "error",
+          title: 'Initialization Error',
+          description: error instanceof Error ? error.message : 'Unknown error occurred',
+          status: 'error',
           duration: 5000,
         });
         // Clean up on error
         await leaveGame();
       }
+
     } catch (error) {
-      console.error("Game initialization failed:", error);
+      console.error('Game initialization failed:', error);
       setIsSocketConnected(false);
       setIsEngineLoaded(false);
       toast({
-        title: "Initialization Error",
-        description:
-          error instanceof Error ? error.message : "Unknown error occurred",
-        status: "error",
+        title: 'Initialization Error',
+        description: error instanceof Error ? error.message : 'Unknown error occurred',
+        status: 'error',
         duration: 5000,
       });
       // Clean up on error
@@ -839,7 +561,10 @@ const Game: React.FC = () => {
       <Box p={4}>
         <VStack spacing={4}>
           <Text>Please connect your wallet to play</Text>
-          <Button colorScheme="blue" onClick={() => navigate("/login")}>
+          <Button
+            colorScheme="blue"
+            onClick={() => navigate('/login')}
+          >
             Connect Wallet
           </Button>
         </VStack>
@@ -850,19 +575,24 @@ const Game: React.FC = () => {
   return (
     <VStack spacing={4} align="stretch" h="100vh" w="100%">
       <HStack justify="space-between" p={4}>
-        <Text>Status: {isSocketConnected ? "Connected" : "Disconnected"}</Text>
+        <Text>
+          Status: {isSocketConnected ? 'Connected' : 'Disconnected'}
+        </Text>
         {isSocketConnected ? (
           <Button
             colorScheme="red"
             onClick={() => {
               leaveGame();
-              navigate("/");
+              navigate('/');
             }}
           >
             Leave Game
           </Button>
         ) : (
-          <Button colorScheme="blue" onClick={initializeGame}>
+          <Button
+            colorScheme="blue"
+            onClick={initializeGame}
+          >
             Join Game
           </Button>
         )}
@@ -870,7 +600,7 @@ const Game: React.FC = () => {
 
       <Box
         flex={1}
-        bg={useColorModeValue("black", "black")}
+        bg={useColorModeValue('black', 'black')}
         id="game-container"
         position="relative"
         w="100%"
@@ -897,4 +627,4 @@ const Game: React.FC = () => {
   );
 };
 
-export default Game;
+export default Game; 

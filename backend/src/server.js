@@ -1,7 +1,7 @@
-const path = require("path");
-require("dotenv").config({ path: path.resolve(__dirname, "../.env") });
+require("dotenv").config();
 const express = require("express");
 const http = require("http");
+const socketIo = require("socket.io");
 const cors = require("cors");
 const helmet = require("helmet");
 const cluster = require("cluster");
@@ -13,13 +13,12 @@ const { setupMiddleware } = require("./middleware");
 const { setupSocketHandlers } = require("./socket");
 const { setupDatabase } = require("./config/database");
 const { setupLogger } = require("./utils/logger");
-const setupSocketIO = require("./config/socketSetup");
 
 // Number of workers to create (use # of CPU cores by default)
 const numWorkers = process.env.WORKERS || os.cpus().length;
 
 // Main function for setting up the server
-const setupServer = async () => {
+const setupServer = () => {
   const app = express();
   const server = http.createServer(app);
 
@@ -32,6 +31,28 @@ const setupServer = async () => {
           "http://localhost:5000",
           "http://localhost:5173",
         ];
+
+  // Socket.IO with optimized settings for high concurrency
+  const io = socketIo(server, {
+    cors: {
+      origin: allowedOrigins,
+      methods: ["GET", "POST"],
+      credentials: true,
+    },
+    // Socket.IO performance optimizations
+    transports: ["websocket"],
+    pingInterval: 10000,
+    pingTimeout: 5000,
+    connectTimeout: 5000,
+    maxHttpBufferSize: 1e6, // 1MB
+    // Add adapter for Redis if using multiple instances
+    ...(process.env.REDIS_HOST && {
+      adapter: require("socket.io-redis")({
+        host: process.env.REDIS_HOST,
+        port: process.env.REDIS_PORT,
+      }),
+    }),
+  });
 
   // Setup logger
   const logger = setupLogger();
@@ -63,20 +84,14 @@ const setupServer = async () => {
   // Setup routes
   setupRoutes(app);
 
-  // Setup database connection first
-  try {
-    await setupDatabase();
-    logger.info("Database setup completed successfully");
+  // Setup Socket.IO handlers
+  setupSocketHandlers(io);
 
-    // Setup Socket.IO with Redis adapter after database is connected
-    const io = await setupSocketIO(server);
-
-    // Setup Socket.IO handlers
-    setupSocketHandlers(io);
-  } catch (error) {
-    logger.error("Database setup failed:", error);
+  // Setup database connection
+  setupDatabase().catch((err) => {
+    logger.error("Failed to connect to database:", err);
     process.exit(1);
-  }
+  });
 
   // Error handling middleware
   app.use((err, req, res, next) => {
@@ -142,8 +157,5 @@ if (cluster.isMaster && process.env.NODE_ENV === "production") {
   });
 } else {
   // Workers share the TCP connection
-  setupServer().catch((error) => {
-    console.error("Failed to setup server:", error);
-    process.exit(1);
-  });
+  setupServer();
 }

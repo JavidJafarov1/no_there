@@ -103,8 +103,58 @@ export class GameSocket {
       this.config.onError(new Error("Failed to reconnect to server"));
     });
 
-    // Note: All game-specific rendering event handlers have been moved to artwork.js
-    // Only keep non-rendering related handlers here if needed in the future
+    // Game-specific event handlers
+    this.socket.on("players_update", (players) => {
+      console.log("Received players update:", players);
+      if (!window.gameEngine) {
+        console.warn("Game engine not available for players update");
+        return;
+      }
+      if (typeof window.gameEngine.updatePlayers === "function") {
+        window.gameEngine.updatePlayers(players);
+      } else {
+        console.error("Game engine missing updatePlayers method");
+      }
+    });
+
+    this.socket.on("userMoved", (data) => {
+      console.log("Received player movement:", data);
+      if (!window.gameEngine) {
+        console.warn("Game engine not available for player movement");
+        return;
+      }
+      if (typeof window.gameEngine.updatePlayerPosition === "function") {
+        window.gameEngine.updatePlayerPosition(data.id, data.position);
+      } else {
+        console.error("Game engine missing updatePlayerPosition method");
+      }
+    });
+
+    this.socket.on("newPlayer", (data) => {
+      console.log("New player joined:", data);
+      if (!window.gameEngine) {
+        console.warn("Game engine not available for new player");
+        return;
+      }
+      if (typeof window.gameEngine.addPlayer === "function") {
+        window.gameEngine.addPlayer(data.id, data.position);
+      } else {
+        console.error("Game engine missing addPlayer method");
+      }
+    });
+
+    this.socket.on("userLeft", (data) => {
+      console.log("Player left:", data);
+      if (!window.gameEngine) {
+        console.warn("Game engine not available for player removal");
+        return;
+      }
+      if (typeof window.gameEngine.removePlayer === "function") {
+        window.gameEngine.removePlayer(data.id);
+      } else {
+        console.error("Game engine missing removePlayer method");
+      }
+    });
 
     console.log("All socket event listeners set up successfully");
   }
@@ -158,9 +208,5 @@ export class GameSocket {
   on(event: string, callback: (data: any) => void): void {
     console.log("Setting up listener for event:", event);
     this.socket?.on(event, callback);
-  }
-
-  getSocket() {
-    return this.socket;
   }
 }

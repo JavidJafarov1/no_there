@@ -4,9 +4,9 @@
   "description": "Multiplayer online project with blockchain integration",
   "main": "src/server.js",
   "scripts": {
-    "start": "node backend/src/server.js",
+    "start": "node src/server.js",
     "dev": "concurrently \"npm run dev:backend\" \"npm run dev:frontend\"",
-    "dev:backend": "cd backend && nodemon src/server.js",
+    "dev:backend": "nodemon src/server.js",
     "dev:frontend": "cd frontend && npm run dev",
     "test": "jest"
   },

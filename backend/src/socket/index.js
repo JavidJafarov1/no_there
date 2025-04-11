@@ -71,6 +71,9 @@ const setupSocketHandlers = (io) => {
   io.on("connection", (socket) => {
     console.log("New client connected:", socket.id);
 
+    // Set rate limiting for this socket
+    setupRateLimiting(socket);
+
     // Handle authentication
     socket.on("authenticate", async (data) => {
       try {
@@ -139,6 +142,14 @@ const setupSocketHandlers = (io) => {
     socket.on("userMovement", (data) => {
       if (!socket.userAddress) {
         socket.emit("error", { message: "Not authenticated" });
+        return;
+      }
+
+      // Check for rate limit
+      if (socket.isRateLimited) {
+        socket.emit("error", {
+          message: "Rate limit exceeded. Please slow down.",
+        });
         return;
       }
 
@@ -238,7 +249,7 @@ const setupSocketHandlers = (io) => {
         .spawnPrize(type, value, position)
         .then((prize) => {
           // Notify all clients about the new prize
-          io.emit("prize_spawned", {
+          io.emit("new_prize", {
             id: prize.id,
             type: prize.type,
             value: prize.value,
@@ -260,92 +271,6 @@ const setupSocketHandlers = (io) => {
         .catch((err) => {
           console.error("Error spawning prize:", err);
           socket.emit("error", { message: "Failed to spawn prize" });
-        });
-    });
-
-    // Handle request for all prizes
-    socket.on("requestPrizes", () => {
-      console.log(`Client ${socket.id} requested all prizes`);
-      if (!socket.userAddress) {
-        socket.emit("error", { message: "Not authenticated" });
-        return;
-      }
-
-      // Get all active prizes
-      const prizes = prizeService.getAllActivePrizes();
-
-      // Convert array to object with prize.id as keys for easier client-side handling
-      const prizesObj = {};
-      prizes.forEach((prize) => {
-        prizesObj[prize.id] = prize;
-      });
-
-      // Send prizes to requesting client
-      socket.emit("prizes_update", prizesObj);
-    });
-
-    // Handle prize claim check
-    socket.on("checkPrize", (data) => {
-      if (!socket.userAddress) {
-        socket.emit("error", { message: "Not authenticated" });
-        return;
-      }
-
-      const { position } = data;
-
-      // Check if position is valid
-      if (
-        !position ||
-        typeof position.x !== "number" ||
-        typeof position.y !== "number"
-      ) {
-        socket.emit("error", { message: "Invalid position data" });
-        return;
-      }
-
-      // Get user data
-      const userData = socketService.getUser(socket.id);
-      if (!userData) {
-        socket.emit("error", { message: "User data not found" });
-        return;
-      }
-
-      // Attempt to claim prize
-      prizeService
-        .attemptPrizeClaim(userData.userId, position)
-        .then((prize) => {
-          if (prize) {
-            // Notify the user that they claimed a prize
-            socket.emit("got_prize", {
-              id: prize.id,
-              type: prize.type,
-              value: prize.value,
-              position: prize.position,
-            });
-
-            // Notify all clients that a prize was claimed
-            io.emit("prize_claimed", {
-              prizeId: prize.id,
-              claimedBy: socket.id,
-              prize: prize,
-              userAddress: userData.address,
-            });
-
-            // Publish prize claim to other server instances
-            publishEvent({
-              type: "prize_claimed",
-              data: {
-                prizeId: prize.id,
-                claimedBy: socket.id,
-                prize: prize,
-                userAddress: userData.address,
-              },
-              source: SERVER_ID,
-            });
-          }
-        })
-        .catch((err) => {
-          console.error("Error checking for prize claims:", err);
         });
     });
 
@@ -403,22 +328,10 @@ function setupRedisPubSub(io, socketService) {
           io.emit("userLeft", event.data);
           break;
         case "prize_claimed":
-          // Handle the new prize_claimed event format
-          io.emit("prize_claimed", {
-            prizeId: event.data.prizeId,
-            claimedBy: event.data.claimedBy,
-            prize: event.data.prize,
-            userAddress: event.data.userAddress,
-          });
+          io.emit("prize_claimed", event.data);
           break;
         case "new_prize":
-          // Renamed to match client's expected event
-          io.emit("prize_spawned", {
-            id: event.data.id,
-            type: event.data.type,
-            value: event.data.value,
-            position: event.data.position,
-          });
+          io.emit("new_prize", event.data);
           break;
       }
     } catch (error) {
@@ -438,6 +351,45 @@ function publishEvent(event) {
   } catch (error) {
     console.error("Error publishing event to Redis:", error);
   }
+}
+
+/**
+ * Set up rate limiting for a socket connection
+ */
+function setupRateLimiting(socket) {
+  const MAX_REQUESTS_PER_WINDOW = 30; // Max requests per window
+  const RATE_LIMIT_WINDOW = 1000; // Window size in ms (1 second)
+
+  let requestCount = 0;
+  let windowStart = Date.now();
+
+  // Reset rate limit window periodically
+  const resetInterval = setInterval(() => {
+    requestCount = 0;
+    windowStart = Date.now();
+    socket.isRateLimited = false;
+  }, RATE_LIMIT_WINDOW);
+
+  // Clean up interval on disconnect
+  socket.on("disconnect", () => {
+    clearInterval(resetInterval);
+  });
+
+  // Add rate limit middleware to all events
+  const onevent = socket.onevent;
+  socket.onevent = function (packet) {
+    // Count the request
+    requestCount++;
+
+    // Check if rate limited
+    if (requestCount > MAX_REQUESTS_PER_WINDOW) {
+      socket.isRateLimited = true;
+      return;
+    }
+
+    // Process the event normally
+    onevent.call(this, packet);
+  };
 }
 
 module.exports = {
